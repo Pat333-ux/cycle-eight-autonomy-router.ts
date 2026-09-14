@@ -91,7 +91,7 @@ export function orchestrateLucrLifecycle(
     blockedActions,
     quote,
     executionSteps: buildExecutionSteps(request, quote, authorizedActions),
-    allowed: hasOperationAuthorization && blockedActions.length === 0,
+    allowed: hasOperationAuthorization,
     requiresAudit: hasAuditOnlyPath,
   };
 }
@@ -240,7 +240,7 @@ function buildExecutionSteps(
         {
           stage: "market-router",
           method: "quote-sell",
-          reason: `Quote ${quote.lucrAmount} payout for ${request.amount} LUCR.`,
+          reason: `Quote ${quote.paymentAmount} ${quote.paymentAsset} payout for ${request.amount} LUCR.`,
         },
         {
           stage: "market-router",

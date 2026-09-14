@@ -112,8 +112,12 @@ export type DeterministicOutput = {
 
 export function runDeterministicContract(
   input: DeterministicInput,
+  normalizedGovernanceArtifacts?: GovernanceArtifact[],
 ): DeterministicOutput {
-  const normalizedInput = normalizeContractInput(input);
+  const normalizedInput = normalizeContractInput(
+    input,
+    normalizedGovernanceArtifacts,
+  );
   const invariants = evaluateInvariants(normalizedInput);
   const report = runConstitutionalIntelligenceCore(normalizedInput);
   const repairs = generateLineageRepairs(
@@ -303,6 +307,7 @@ export function evaluateConstitutionalRules(
 
 function normalizeContractInput(
   input: DeterministicInput,
+  normalizedGovernanceArtifacts?: GovernanceArtifact[],
 ): ConstitutionalIntelligenceInput & {
   lineageState: LineageState;
   citizens: CitizenObject[];
@@ -311,10 +316,12 @@ function normalizeContractInput(
     lineage: input.lineage.nodes,
     lineageState: input.lineage,
     registries: input.registries,
-    governanceArtifacts: buildDeterministicGovernanceArtifacts(
-      input.lineage,
-      input.governanceArtifacts,
-    ),
+    governanceArtifacts:
+      normalizedGovernanceArtifacts ??
+      buildDeterministicGovernanceArtifacts(
+        input.lineage,
+        input.governanceArtifacts,
+      ),
     governanceEvents: input.events,
     thresholds: input.constitutionalRules,
     citizens: input.citizens ?? [],

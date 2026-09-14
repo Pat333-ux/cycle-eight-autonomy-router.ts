@@ -38,7 +38,7 @@ export type MunisibleTaskForce = {
 export type MunisibleInformants = {
   programId: string;
   identity: Record<string, string>;
-  permissions: Record<string, boolean>;
+  permissions: Record<string, boolean | string>;
   evidenceIntegrityRules: Record<string, boolean>;
   routingRules: Record<string, string>;
   wellbeingRules: Record<string, boolean>;
@@ -138,7 +138,7 @@ export function bindMunisibleOperations(
     registries,
     governanceArtifacts: municipalGovernanceArtifacts,
     events: [normalizedEvent],
-  });
+  }, effectiveGovernanceArtifacts);
   const constitutionalReport = runConstitutionalIntelligenceCore({
     lineage: lineage.nodes,
     registries,
@@ -429,7 +429,7 @@ function normalizedMunicipalIntelligenceNeeded(
 ): boolean {
   return (
     Boolean(event.citizenId) &&
-    munisibleArtifacts.informants.permissions.receiveRouting &&
+    munisibleArtifacts.informants.permissions.receiveRouting === true &&
     constitutionalReport.detectedViolations.length > 0
   );
 }
