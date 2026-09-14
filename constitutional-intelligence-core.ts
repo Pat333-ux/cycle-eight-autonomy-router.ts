@@ -185,6 +185,11 @@ const ministryByDomain: Record<GovernanceDomain, MinistryName> = {
   ministry: "Coordination",
 };
 
+const citizenGrowthRewardFactor = 0.001;
+const maximumCitizenGrowthReward = 0.02;
+const stabilityReserveAdjustment = 0.02;
+const wellbeingReserveAdjustment = 0.01;
+
 export function runConstitutionalIntelligenceCore(
   input: ConstitutionalIntelligenceInput,
 ): ConstitutionalIntelligenceReport {
@@ -307,7 +312,11 @@ export function detectBrokenLineage(lineage: LineageNode[]): LineageRepair[] {
       });
     }
 
-    if (node.expectedParentHash && parent.hash !== node.expectedParentHash) {
+    if (
+      node.expectedParentHash &&
+      parent.hash &&
+      parent.hash !== node.expectedParentHash
+    ) {
       repairs.push({
         nodeId: node.id,
         reason: `Lineage node ${node.id} has a parent hash mismatch for ${parent.id}.`,
@@ -487,11 +496,19 @@ export function rebalanceTokenomics(
   );
   const stabilityPressure =
     registries.cycleStabilityScore < thresholds.minimumCycleStabilityScore
-      ? 0.02
+      ? stabilityReserveAdjustment
       : 0;
   const wellbeingPressure =
-    registries.wellbeingScore < thresholds.minimumWellbeingScore ? 0.01 : 0;
-  const growthReward = citizenGrowth > 0 ? Math.min(citizenGrowth * 0.001, 0.02) : 0;
+    registries.wellbeingScore < thresholds.minimumWellbeingScore
+      ? wellbeingReserveAdjustment
+      : 0;
+  const growthReward =
+    citizenGrowth > 0
+      ? Math.min(
+          citizenGrowth * citizenGrowthRewardFactor,
+          maximumCitizenGrowthReward,
+        )
+      : 0;
 
   return {
     reserveRatio: roundToFour(
