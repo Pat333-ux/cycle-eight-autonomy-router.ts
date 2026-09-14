@@ -309,7 +309,7 @@ export function evaluateConstitutionalRules(
 
   return dedupePredictedActions([
     ...actions,
-    ...deriveLifecycleAuthorizations(events, invariants),
+    ...deriveLifecycleAuthorizations(events, invariants, actions),
   ]);
 }
 
@@ -575,8 +575,19 @@ function moreSeverePriority(
 function deriveLifecycleAuthorizations(
   events: GovernanceEvent[],
   invariants: InvariantViolation[],
+  predictedActions: PredictedAction[],
 ): PredictedAction[] {
-  if (invariants.some((invariant) => invariant.severity === "critical")) {
+  const hasBlockingInvariant = invariants.some(
+    (invariant) =>
+      invariant.severity === "critical" || invariant.severity === "high",
+  );
+  const hasBlockingAction = predictedActions.some(
+    (action) =>
+      action.action === "run-constitutional-audit" ||
+      action.action === "reconstruct-lineage",
+  );
+
+  if (hasBlockingInvariant || hasBlockingAction) {
     return [];
   }
 

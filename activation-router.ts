@@ -59,6 +59,7 @@ export function routeActivationEvent(
     governanceArtifacts,
   });
   const targetsAllowedWhilePending = new Set<ActivationRouteTarget>([
+    "ministries",
     "evidence-integrity",
     "federal-filings",
   ]);

@@ -111,7 +111,7 @@ function buildActivationConditions(
     {
       code: "ACTIVATION_TRIGGER_THRESHOLD",
       satisfied:
-        event.thresholdSnapshot.overallActivationScore >=
+        getActivationScore(event) >=
           event.thresholdSnapshot.triggerThreshold || event.severity === "critical",
       reason: "Activation must cross the deterministic self-trigger threshold or be critical.",
       severity: "high",
@@ -345,4 +345,31 @@ function deterministicHash(value: string): string {
   }
 
   return `activation-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+function getActivationScore(event: ActivationEvent): number {
+  switch (event.activationClass) {
+    case "wellbeing-epoch":
+      return event.thresholdSnapshot.citizenGovernanceScore;
+    case "governance-cycle":
+      return event.thresholdSnapshot.daoActivationScore;
+    case "constitutional-audit":
+    case "lineage-repair":
+    case "evidence-integrity":
+    case "informant-program":
+      return event.thresholdSnapshot.evidenceIntegrityScore;
+    case "tokenomic-adjustment":
+      return event.thresholdSnapshot.tokenomicsActivationScore;
+    case "ministry-directive":
+      return event.thresholdSnapshot.ministryActivationScore;
+    case "municipal-operation":
+    case "task-force":
+      return event.thresholdSnapshot.municipalActivationScore;
+    case "citizen-governance":
+      return event.thresholdSnapshot.citizenGovernanceScore;
+    case "federal-filing":
+      return event.thresholdSnapshot.federalActivationScore;
+    case "dao-governance":
+      return event.thresholdSnapshot.daoActivationScore;
+  }
 }

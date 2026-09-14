@@ -237,7 +237,7 @@ function dedupeGovernanceArtifacts(
 
   for (const artifact of artifacts) {
     uniqueArtifacts.set(
-      `${artifact.type}:${artifact.linkedNodeId ?? "global"}`,
+      `${artifact.type}:${artifact.linkedNodeId ?? "global"}:${artifact.id}`,
       artifact,
     );
   }

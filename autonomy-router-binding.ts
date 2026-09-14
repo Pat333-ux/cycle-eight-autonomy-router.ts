@@ -85,11 +85,19 @@ export function filterAllowedRouterActions(
   );
 
   if (hasBlockingInvariant(deterministicOutput)) {
-    return proposedActions.filter(
-      (action) =>
-        action.action === "run-constitutional-audit" &&
-        allowedActionTypes.has(action.action),
+    const auditActions = proposedActions.filter(
+      (action) => action.action === "run-constitutional-audit",
     );
+
+    if (auditActions.length > 0) {
+      return auditActions;
+    }
+
+    return [{
+      action: "run-constitutional-audit",
+      reason: buildInvariantAuditFallbackReason(deterministicOutput),
+      priority: "critical",
+    }];
   }
 
   return proposedActions.filter((action) => allowedActionTypes.has(action.action));
@@ -104,4 +112,16 @@ function normalizeSystemEvent(event: SystemEvent): SystemEvent {
 
 function hasBlockingInvariant(output: DeterministicOutput): boolean {
   return output.invariants.some((invariant) => invariant.severity === "critical");
+}
+
+function buildInvariantAuditFallbackReason(
+  output: DeterministicOutput,
+): string {
+  const criticalReasons = output.invariants
+    .filter((invariant) => invariant.severity === "critical")
+    .map((invariant) => invariant.message);
+
+  return criticalReasons.length > 0
+    ? `Blocking invariants require constitutional audit: ${criticalReasons.join("; ")}`
+    : "Blocking invariants require constitutional audit before autonomous execution.";
 }
