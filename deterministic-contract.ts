@@ -168,17 +168,19 @@ export function evaluateInvariants(
   }
 
   const nodeById = new Map(input.lineage.map((node) => [node.id, node]));
-  const hasCycleBoundSealManifest = input.governanceArtifacts.some(
+  const hasActiveCycleSealManifest = input.governanceArtifacts.some(
     (artifact) =>
       artifact.type === "seal-manifest" &&
       artifact.status === "present" &&
       Boolean(
         artifact.linkedNodeId &&
-          nodeById.get(artifact.linkedNodeId)?.cycleId,
+          input.lineageState.activeCycleId &&
+          nodeById.get(artifact.linkedNodeId)?.cycleId ===
+            input.lineageState.activeCycleId,
       ),
   );
 
-  if (hasCycleBoundSealManifest && !input.lineageState.activeCycleId) {
+  if (input.lineageState.activeCycleId && !hasActiveCycleSealManifest) {
     invariants.push({
       code: "SEAL_REQUIRES_CYCLE",
       severity: "high",
@@ -402,14 +404,18 @@ function toGovernanceArtifacts(
   }
 
   if (typeof value === "string") {
-    const linkedNodeIds = findArtifactNodeIds(type, nodes, defaultNodeId);
-    return linkedNodeIds.map((linkedNodeId) => ({
-      id: value,
-      type,
-      status: "present",
-      required: true,
-      linkedNodeId,
-    }));
+    const linkedNodeId = selectArtifactNodeId(type, nodes, defaultNodeId);
+    return linkedNodeId
+      ? [
+          {
+            id: value,
+            type,
+            status: "present",
+            required: true,
+            linkedNodeId,
+          },
+        ]
+      : [];
   }
 
   if (hasArtifactId(value)) {
@@ -419,8 +425,7 @@ function toGovernanceArtifacts(
         type,
         status: value.status ?? "present",
         required: true,
-        linkedNodeId:
-          value.nodeId ?? findArtifactNodeIds(type, nodes, defaultNodeId)[0],
+        linkedNodeId: value.nodeId ?? selectArtifactNodeId(type, nodes, defaultNodeId),
       },
     ];
   }
@@ -450,11 +455,11 @@ function hasArtifactId(
   return "id" in value;
 }
 
-function findArtifactNodeIds(
+function selectArtifactNodeId(
   artifactType: string,
   nodes: LineageNode[],
   defaultNodeId?: string,
-): string[] {
+): string | undefined {
   const linkedNodeIds = nodes
     .filter((node) =>
       (requiredArtifactsByStatus[node.status] as readonly string[]).some(
@@ -463,11 +468,15 @@ function findArtifactNodeIds(
     )
     .map((node) => node.id);
 
-  if (linkedNodeIds.length > 0) {
-    return linkedNodeIds;
+  if (defaultNodeId && linkedNodeIds.includes(defaultNodeId)) {
+    return defaultNodeId;
   }
 
-  return defaultNodeId ? [defaultNodeId] : [];
+  if (linkedNodeIds.length === 1) {
+    return linkedNodeIds[0];
+  }
+
+  return defaultNodeId;
 }
 
 function joinDistinctReasons(left: string, right: string): string {

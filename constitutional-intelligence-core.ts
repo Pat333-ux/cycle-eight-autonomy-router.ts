@@ -352,7 +352,7 @@ export function findMissingArtifacts(
   const explicitMissing = artifacts
     .filter((artifact) => artifact.required && !isUsableArtifact(artifact))
     .flatMap<MissingArtifact>((artifact) =>
-      resolveArtifactNodeIds(lineage, artifact).map((nodeId) => ({
+      resolveArtifactNodeId(lineage, artifact).map((nodeId) => ({
         nodeId,
         artifactType: artifact.type,
         status: artifact.status === "stale" ? "stale" : "missing",
@@ -765,7 +765,7 @@ function isUsableArtifact(artifact: GovernanceArtifact): boolean {
   return artifact.status === "present";
 }
 
-function resolveArtifactNodeIds(
+function resolveArtifactNodeId(
   lineage: LineageNode[],
   artifact: GovernanceArtifact,
 ): string[] {
@@ -777,11 +777,12 @@ function resolveArtifactNodeIds(
     .filter((node) => requiredArtifactsByStatus[node.status].includes(artifact.type))
     .map((node) => node.id);
 
-  if (matchingNodeIds.length > 0) {
+  if (matchingNodeIds.length === 1) {
     return matchingNodeIds;
   }
 
-  return lineage[0] ? [lineage[0].id] : [];
+  const rootNodeId = lineage.find((node) => !node.parentId)?.id;
+  return rootNodeId ? [rootNodeId] : lineage[0] ? [lineage[0].id] : [];
 }
 
 function missingArtifactStatusRank(
