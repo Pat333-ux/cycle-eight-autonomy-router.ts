@@ -97,8 +97,15 @@ export interface ConstitutionalViolation {
   message: string;
 }
 
+export type GovernanceAction =
+  | "run-constitutional-audit"
+  | "trigger-stability-cycle"
+  | "trigger-wellbeing-epoch"
+  | "reconstruct-lineage"
+  | "rebalance-lucr";
+
 export interface PredictedAction {
-  action: string;
+  action: GovernanceAction;
   reason: string;
   priority: GovernanceSeverity;
 }
@@ -185,6 +192,25 @@ const ministryByDomain: Record<GovernanceDomain, MinistryName> = {
   ministry: "Coordination",
 };
 
+const ministryByAction: Record<GovernanceAction, MinistryName> = {
+  "run-constitutional-audit": "Justice",
+  "trigger-stability-cycle": "Coordination",
+  "trigger-wellbeing-epoch": "Coordination",
+  "reconstruct-lineage": "Archives",
+  "rebalance-lucr": "Treasury",
+};
+
+const directiveKindByAction: Record<
+  GovernanceAction,
+  AutonomousDirective["kind"]
+> = {
+  "run-constitutional-audit": "run-audit",
+  "trigger-stability-cycle": "trigger-cycle",
+  "trigger-wellbeing-epoch": "trigger-epoch",
+  "reconstruct-lineage": "repair-lineage",
+  "rebalance-lucr": "rebalance-tokenomics",
+};
+
 const citizenGrowthRewardFactor = 0.001;
 const maximumCitizenGrowthReward = 0.02;
 const stabilityReserveAdjustment = 0.02;
@@ -231,7 +257,6 @@ export function runConstitutionalIntelligenceCore(
     lineageRepairs,
     ministryRoutes,
     tokenomicsDirective,
-    input.registries.lucr,
   );
 
   return {
@@ -468,12 +493,10 @@ export function predictGovernanceActions(
     });
   }
 
-  if (
-    registries.citizenCount > (registries.previousCitizenCount ?? registries.citizenCount)
-  ) {
+  if (hasTokenomicsAdjustment(registries, thresholds)) {
     actions.push({
       action: "rebalance-lucr",
-      reason: "Citizen growth requires a proactive LUCR rebalance.",
+      reason: "LUCR parameters require proactive constitutional rebalancing.",
       priority: "medium",
     });
   }
@@ -541,26 +564,11 @@ export function routeMinistries(
   }
 
   for (const action of actions) {
-    if (action.action.includes("audit")) {
-      routes.set("Justice", {
-        ministry: "Justice",
-        reason: action.reason,
-      });
-    }
-
-    if (action.action.includes("cycle") || action.action.includes("epoch")) {
-      routes.set("Coordination", {
-        ministry: "Coordination",
-        reason: action.reason,
-      });
-    }
-
-    if (action.action.includes("lucr")) {
-      routes.set("Treasury", {
-        ministry: "Treasury",
-        reason: action.reason,
-      });
-    }
+    const ministry = ministryByAction[action.action];
+    routes.set(ministry, {
+      ministry,
+      reason: action.reason,
+    });
   }
 
   return [...routes.values()];
@@ -572,24 +580,17 @@ export function buildDirectives(
   lineageRepairs: LineageRepair[],
   ministryRoutes: MinistryRoute[],
   tokenomicsDirective: TokenomicsDirective,
-  currentTokenomics: LucrTokenomicsState,
 ): AutonomousDirective[] {
-  const actionDirectives = actions.map<AutonomousDirective>((action) => ({
-    kind: action.action.includes("epoch")
-      ? "trigger-epoch"
-      : action.action.includes("cycle")
-        ? "trigger-cycle"
-        : action.action.includes("audit")
-          ? "run-audit"
-          : action.action.includes("lucr")
-            ? "rebalance-tokenomics"
-            : "repair-lineage",
-    priority: action.priority,
-    payload: {
-      action: action.action,
-      reason: action.reason,
-    },
-  }));
+  const actionDirectives = actions
+    .filter((action) => action.action !== "rebalance-lucr")
+    .map<AutonomousDirective>((action) => ({
+      kind: directiveKindByAction[action.action],
+      priority: action.priority,
+      payload: {
+        action: action.action,
+        reason: action.reason,
+      },
+    }));
 
   const artifactDirectives = missingArtifacts.map<AutonomousDirective>((artifact) => ({
     kind: "generate-artifact",
@@ -618,9 +619,9 @@ export function buildDirectives(
     },
   }));
 
-  const shouldEmitTokenomicsDirective =
-    actions.some((action) => action.action === "rebalance-lucr") ||
-    hasTokenomicsChange(currentTokenomics, tokenomicsDirective);
+  const shouldEmitTokenomicsDirective = actions.some(
+    (action) => action.action === "rebalance-lucr",
+  );
 
   return sortDirectives([
     ...actionDirectives,
@@ -633,6 +634,7 @@ export function buildDirectives(
             kind: "rebalance-tokenomics" as const,
             priority: "medium" as const,
             payload: {
+              action: "rebalance-lucr",
               reserveRatio: tokenomicsDirective.reserveRatio,
               rewardRate: tokenomicsDirective.rewardRate,
               burnRate: tokenomicsDirective.burnRate,
@@ -676,14 +678,16 @@ function dedupeActions(actions: PredictedAction[]): PredictedAction[] {
   });
 }
 
-function hasTokenomicsChange(
-  currentTokenomics: LucrTokenomicsState,
-  directive: TokenomicsDirective,
+function hasTokenomicsAdjustment(
+  registries: RegistrySnapshot,
+  thresholds: ConstitutionalThresholds,
 ): boolean {
+  const directive = rebalanceTokenomics(registries, thresholds);
+
   return (
-    currentTokenomics.reserveRatio !== directive.reserveRatio ||
-    currentTokenomics.rewardRate !== directive.rewardRate ||
-    currentTokenomics.burnRate !== directive.burnRate
+    registries.lucr.reserveRatio !== directive.reserveRatio ||
+    registries.lucr.rewardRate !== directive.rewardRate ||
+    registries.lucr.burnRate !== directive.burnRate
   );
 }
 
