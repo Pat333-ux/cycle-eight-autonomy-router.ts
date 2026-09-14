@@ -528,6 +528,8 @@ export function rebalanceTokenomics(
           maximumCitizenGrowthReward,
         )
       : 0;
+  const hasStabilityAdjustment = stabilityPressure > 0;
+  const hasWellbeingAdjustment = wellbeingPressure > 0;
 
   return {
     reserveRatio: roundToFour(
@@ -545,6 +547,8 @@ export function rebalanceTokenomics(
     reason:
       citizenGrowth > 0
         ? "Citizen growth and constitutional stability signals require updated LUCR parameters."
+        : hasStabilityAdjustment || hasWellbeingAdjustment
+          ? "Constitutional stability or wellbeing safeguards require updated LUCR parameters."
         : "Constitutional safeguards maintain LUCR reserves under current system conditions.",
   };
 }

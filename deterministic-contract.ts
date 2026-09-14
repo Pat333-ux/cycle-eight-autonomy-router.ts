@@ -31,7 +31,16 @@ export type LineageRef = {
 export type LineageState = {
   activeEpochId: string | null;
   activeCycleId: string | null;
-  artifacts: Record<string, string | undefined>;
+  artifacts: Record<
+    string,
+    | string
+    | {
+        id: string;
+        nodeId?: string;
+      }
+    | Record<string, string>
+    | undefined
+  >;
   nodes: LineageNode[];
   refs?: LineageRef[];
 };
@@ -147,7 +156,12 @@ export function evaluateInvariants(
     });
   }
 
-  if (input.lineageState.refs?.some((ref) => ref.cycleId && ref.epochId !== input.lineageState.activeEpochId)) {
+  if (
+    input.lineageState.activeEpochId &&
+    input.lineageState.refs?.some(
+      (ref) => ref.cycleId && ref.epochId !== input.lineageState.activeEpochId,
+    )
+  ) {
     invariants.push({
       code: "LINEAGE_REF_EPOCH_MISMATCH",
       severity: "high",
@@ -259,16 +273,10 @@ function mergeLineageArtifacts(
   lineage: LineageState,
   governanceArtifacts: GovernanceArtifact[],
 ): GovernanceArtifact[] {
-  const linkedNodeId = lineage.activeCycleId ?? lineage.activeEpochId ?? undefined;
-  const artifactEntries = Object.entries(lineage.artifacts)
-    .filter(([, value]) => Boolean(value))
-    .map<GovernanceArtifact>(([type, id]) => ({
-      id: id as string,
-      type,
-      status: "present",
-      required: true,
-      linkedNodeId,
-    }));
+  const defaultNodeId = lineage.activeCycleId ?? lineage.activeEpochId ?? undefined;
+  const artifactEntries = Object.entries(lineage.artifacts).flatMap(
+    ([type, value]) => toGovernanceArtifacts(type, value, defaultNodeId),
+  );
 
   const merged = new Map<string, GovernanceArtifact>();
   for (const artifact of [...governanceArtifacts, ...artifactEntries]) {
@@ -328,4 +336,52 @@ function dedupeRepairDirectives(
 
 function isMinistryRoutingEvent(event: GovernanceEvent): boolean {
   return event.domain === "ministry" || event.type.toLowerCase().includes("ministry");
+}
+
+function toGovernanceArtifacts(
+  type: string,
+  value: LineageState["artifacts"][string],
+  defaultNodeId?: string,
+): GovernanceArtifact[] {
+  if (!value) {
+    return [];
+  }
+
+  if (typeof value === "string") {
+    return [
+      {
+        id: value,
+        type,
+        status: "present",
+        required: true,
+        linkedNodeId: defaultNodeId,
+      },
+    ];
+  }
+
+  if (hasArtifactId(value)) {
+    return [
+      {
+        id: value.id,
+        type,
+        status: "present",
+        required: true,
+        linkedNodeId: value.nodeId ?? defaultNodeId,
+      },
+    ];
+  }
+
+  return Object.entries(value).map(([nodeId, artifactId]) => ({
+    id: artifactId,
+    type,
+    status: "present",
+    required: true,
+    linkedNodeId: nodeId,
+  }));
+}
+
+function hasArtifactId(
+  value: Exclude<LineageState["artifacts"][string], string | undefined>,
+): value is { id: string; nodeId?: string } {
+  return "id" in value;
 }
