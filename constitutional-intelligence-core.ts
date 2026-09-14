@@ -231,6 +231,7 @@ export function runConstitutionalIntelligenceCore(
     lineageRepairs,
     ministryRoutes,
     tokenomicsDirective,
+    input.registries.lucr,
   );
 
   return {
@@ -312,21 +313,16 @@ export function detectBrokenLineage(lineage: LineageNode[]): LineageRepair[] {
       });
     }
 
-    if (
-      node.expectedParentHash &&
-      parent.hash &&
-      parent.hash !== node.expectedParentHash
-    ) {
-      repairs.push({
-        nodeId: node.id,
-        reason: `Lineage node ${node.id} has a parent hash mismatch for ${parent.id}.`,
-      });
-    }
+    const expectedHashMismatch =
+      Boolean(node.expectedParentHash) &&
+      parent.hash !== node.expectedParentHash;
+    const storedHashMismatch =
+      Boolean(node.parentHash) && node.parentHash !== parent.hash;
 
-    if (node.parentHash && parent.hash && node.parentHash !== parent.hash) {
+    if (parent.hash && (expectedHashMismatch || storedHashMismatch)) {
       repairs.push({
         nodeId: node.id,
-        reason: `Lineage node ${node.id} stores stale parent hash data for ${parent.id}.`,
+        reason: `Lineage node ${node.id} has inconsistent parent hash data for ${parent.id}.`,
       });
     }
 
@@ -576,6 +572,7 @@ export function buildDirectives(
   lineageRepairs: LineageRepair[],
   ministryRoutes: MinistryRoute[],
   tokenomicsDirective: TokenomicsDirective,
+  currentTokenomics: LucrTokenomicsState,
 ): AutonomousDirective[] {
   const actionDirectives = actions.map<AutonomousDirective>((action) => ({
     kind: action.action.includes("epoch")
@@ -621,21 +618,29 @@ export function buildDirectives(
     },
   }));
 
+  const shouldEmitTokenomicsDirective =
+    actions.some((action) => action.action === "rebalance-lucr") ||
+    hasTokenomicsChange(currentTokenomics, tokenomicsDirective);
+
   return sortDirectives([
     ...actionDirectives,
     ...artifactDirectives,
     ...repairDirectives,
     ...ministryDirectives,
-    {
-      kind: "rebalance-tokenomics",
-      priority: "medium",
-      payload: {
-        reserveRatio: tokenomicsDirective.reserveRatio,
-        rewardRate: tokenomicsDirective.rewardRate,
-        burnRate: tokenomicsDirective.burnRate,
-        reason: tokenomicsDirective.reason,
-      },
-    },
+    ...(shouldEmitTokenomicsDirective
+      ? [
+          {
+            kind: "rebalance-tokenomics" as const,
+            priority: "medium" as const,
+            payload: {
+              reserveRatio: tokenomicsDirective.reserveRatio,
+              rewardRate: tokenomicsDirective.rewardRate,
+              burnRate: tokenomicsDirective.burnRate,
+              reason: tokenomicsDirective.reason,
+            },
+          },
+        ]
+      : []),
   ]);
 }
 
@@ -669,6 +674,17 @@ function dedupeActions(actions: PredictedAction[]): PredictedAction[] {
     seen.add(action.action);
     return true;
   });
+}
+
+function hasTokenomicsChange(
+  currentTokenomics: LucrTokenomicsState,
+  directive: TokenomicsDirective,
+): boolean {
+  return (
+    currentTokenomics.reserveRatio !== directive.reserveRatio ||
+    currentTokenomics.rewardRate !== directive.rewardRate ||
+    currentTokenomics.burnRate !== directive.burnRate
+  );
 }
 
 function dedupeMissingArtifacts(
