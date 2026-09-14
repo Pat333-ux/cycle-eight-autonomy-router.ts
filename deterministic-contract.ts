@@ -195,8 +195,11 @@ export function evaluateInvariants(
 
   if (
     input.lineageState.activeEpochId &&
+    input.lineageState.activeCycleId &&
     input.lineageState.refs?.some(
-      (ref) => ref.cycleId && ref.epochId !== input.lineageState.activeEpochId,
+      (ref) =>
+        ref.cycleId === input.lineageState.activeCycleId &&
+        ref.epochId !== input.lineageState.activeEpochId,
     )
   ) {
     invariants.push({
@@ -416,7 +419,7 @@ function toGovernanceArtifacts(
             id: value,
             type,
             status: "present",
-            required: true,
+            required: isRequiredArtifactForNode(type, linkedNodeId, nodes),
             linkedNodeId,
           },
         ]
@@ -429,25 +432,34 @@ function toGovernanceArtifacts(
         id: value.id,
         type,
         status: value.status ?? "present",
-        required: true,
-        linkedNodeId: value.nodeId ?? selectArtifactNodeId(type, nodes, defaultNodeId),
+        linkedNodeId:
+          value.nodeId ?? selectArtifactNodeId(type, nodes, defaultNodeId),
+        required: isRequiredArtifactForNode(
+          type,
+          value.nodeId ?? selectArtifactNodeId(type, nodes, defaultNodeId),
+          nodes,
+        ),
       },
     ];
   }
 
-  return Object.entries(value).map(([nodeId, artifactValue]) => ({
-    id: typeof artifactValue === "string" ? artifactValue : artifactValue.id,
-    type,
-    status:
-      typeof artifactValue === "string"
-        ? "present"
-        : artifactValue.status ?? "present",
-    required: true,
-    linkedNodeId:
+  return Object.entries(value).map(([nodeId, artifactValue]) => {
+    const linkedNodeId =
       typeof artifactValue === "string"
         ? nodeId
-        : artifactValue.nodeId ?? nodeId,
-  }));
+        : artifactValue.nodeId ?? nodeId;
+
+    return {
+      id: typeof artifactValue === "string" ? artifactValue : artifactValue.id,
+      type,
+      status:
+        typeof artifactValue === "string"
+          ? "present"
+          : artifactValue.status ?? "present",
+      required: isRequiredArtifactForNode(type, linkedNodeId, nodes),
+      linkedNodeId,
+    };
+  });
 }
 
 function hasArtifactId(
@@ -486,6 +498,25 @@ function selectArtifactNodeId(
   }
 
   return undefined;
+}
+
+function isRequiredArtifactForNode(
+  artifactType: string,
+  nodeId: string | undefined,
+  nodes: LineageNode[],
+): boolean {
+  if (!nodeId) {
+    return false;
+  }
+
+  const node = nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) {
+    return false;
+  }
+
+  return (requiredArtifactsByStatus[node.status] as readonly string[]).includes(
+    artifactType,
+  );
 }
 
 function joinDistinctReasons(left: string, right: string): string {

@@ -13,6 +13,7 @@ import {
 export type LucrLifecycleOperation = "buy" | "sell" | "mint" | "burn";
 
 export type LucrLifecycleRequest = {
+  requestId?: string;
   operation: LucrLifecycleOperation;
   citizenId: string;
   walletAddress: string;
@@ -83,7 +84,7 @@ export function orchestrateLucrLifecycle(
     blockedActions,
     quote,
     executionSteps: buildExecutionSteps(request, quote, authorizedActions),
-    allowed: authorizedActions.length > 0,
+    allowed: binding.shouldExecute && blockedActions.length === 0,
   };
 }
 
@@ -105,9 +106,9 @@ export function quoteLucrLifecycle(
     }
     case "sell":
       return {
-        paymentAsset: "LUCR",
-        paymentAmount: request.amount,
-        lucrAmount: roundToFour(request.amount * burnMultiplier),
+        paymentAsset: request.paymentAsset ?? "USDC",
+        paymentAmount: roundToFour(request.amount * burnMultiplier),
+        lucrAmount: request.amount,
       };
     case "mint":
       return {
@@ -258,8 +259,12 @@ function buildExecutionSteps(
 }
 
 function mapLucrRequestToEvent(request: LucrLifecycleRequest): SystemEvent {
+  const requestIdentity =
+    request.requestId ??
+    `${request.citizenId}-${request.amount}-${request.paymentAmount ?? 0}-${request.walletAddress}`;
+
   return {
-    id: `lucr-${request.operation}-${request.citizenId}`,
+    id: `lucr-${request.operation}-${requestIdentity}`,
     type: `lucr-${request.operation}`,
     domain: "tokenomics",
     severity: request.operation === "burn" ? "high" : "medium",

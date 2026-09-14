@@ -54,11 +54,12 @@ export function evaluateCycleEight(
     });
   }
 
-  if (isTokenomicsEvent(event, registries)) {
+  const tokenomicsPressure = getTokenomicsPressure(event, registries);
+  if (tokenomicsPressure) {
     proposedActions.push({
       action: "rebalance-lucr",
-      reason: `Router detected LUCR rebalance pressure from ${event.type}.`,
-      priority: "medium",
+      reason: `Router detected ${tokenomicsPressure} LUCR pressure from ${event.type}.`,
+      priority: tokenomicsPressure === "reserve-protection" ? "high" : "medium",
     });
   }
 
@@ -111,13 +112,24 @@ function isLineageEvent(event: SystemEvent): boolean {
   return event.domain === "lineage";
 }
 
-function isTokenomicsEvent(
+function getTokenomicsPressure(
   event: SystemEvent,
   registries: RegistryState,
-): boolean {
-  return (
-    event.domain === "tokenomics" ||
-    registries.citizenCount > (registries.previousCitizenCount ?? registries.citizenCount) ||
-    registries.lucr.reserveRatio < 0.2
-  );
+): "event-routing" | "citizen-growth" | "reserve-protection" | null {
+  if (registries.lucr.reserveRatio < 0.2) {
+    return "reserve-protection";
+  }
+
+  if (
+    registries.citizenCount >
+    (registries.previousCitizenCount ?? registries.citizenCount)
+  ) {
+    return "citizen-growth";
+  }
+
+  if (event.domain === "tokenomics") {
+    return "event-routing";
+  }
+
+  return null;
 }
