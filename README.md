@@ -2,3 +2,5 @@
 Autonomous Cycle‑Eight router for Beast System 3.0. Detects epoch stability, triggers bootstrap, harmonization, sealing, quantum determinism, and finalization. Emits required LUCR artifacts, updates registries, and ensures cycle lineage correctness without human intervention.
 
 This repository now also includes `constitutional-intelligence-core.ts`, a pure constitutional intelligence module that evaluates lineage, registries, governance artifacts, and governance events to emit deterministic autonomous directives for audits, epochs, cycles, lineage repair, ministry routing, and LUCR tokenomics balancing.
+
+It also includes `deterministic-contract.ts`, a root deterministic governance contract that formalizes invariant evaluation, constitutional action emission, and self-healing lineage repair as a single pure artifact layered on top of the constitutional core.
