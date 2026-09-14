@@ -21,6 +21,19 @@ import {
   runConstitutionalIntelligenceCore,
 } from "./constitutional-intelligence-core";
 
+const requiredArtifactsByStatus = {
+  bootstrap: ["bootstrap-record"],
+  harmonized: ["bootstrap-record", "harmonization-report"],
+  sealed: ["bootstrap-record", "harmonization-report", "seal-manifest"],
+  finalized: [
+    "bootstrap-record",
+    "harmonization-report",
+    "seal-manifest",
+    "quantum-proof",
+    "cycle-report",
+  ],
+} as const;
+
 export type LineageRef = {
   epochId: string;
   cycleId?: string;
@@ -194,7 +207,7 @@ export function evaluateInvariants(
     ...missingArtifacts.map((artifact) => ({
       code: "MISSING_PARENT_ARTIFACT",
       severity: "high" as const,
-      message: `Required artifact ${artifact.artifactType} is missing for lineage node ${artifact.nodeId}.`,
+      message: `Required artifact ${artifact.artifactType} is ${artifact.status} for lineage node ${artifact.nodeId}.`,
     })),
     ...brokenLineage.map((repair) => ({
       code: "LINEAGE_STATE_INTEGRITY",
@@ -222,7 +235,7 @@ export function generateLineageRepairs(
       nodeId: artifact.nodeId,
       artifactType: artifact.artifactType,
       priority: "high",
-      reason: `Regenerate ${artifact.artifactType} for lineage node ${artifact.nodeId}.`,
+      reason: `${artifact.status === "stale" ? "Refresh" : "Regenerate"} ${artifact.artifactType} for lineage node ${artifact.nodeId}.`,
     })),
   ];
 
@@ -234,16 +247,31 @@ export function evaluateConstitutionalRules(
   invariants: InvariantViolation[],
 ): PredictedAction[] {
   const actions = [...predictedActions];
+  const invariantAuditReason =
+    "Critical invariant violations require constitutional audit before execution.";
 
-  if (
-    invariants.some((invariant) => invariant.severity === "critical") &&
-    !actions.some((action) => action.action === "run-constitutional-audit")
-  ) {
-    actions.unshift({
-      action: "run-constitutional-audit",
-      reason: "Critical invariant violations require constitutional audit before execution.",
-      priority: "critical",
-    });
+  if (invariants.some((invariant) => invariant.severity === "critical")) {
+    const existingAuditIndex = actions.findIndex(
+      (action) => action.action === "run-constitutional-audit",
+    );
+
+    if (existingAuditIndex >= 0) {
+      const existingAudit = actions[existingAuditIndex];
+      actions[existingAuditIndex] = {
+        ...existingAudit,
+        priority:
+          severityRank(existingAudit.priority) < severityRank("critical")
+            ? existingAudit.priority
+            : "critical",
+        reason: joinDistinctReasons(existingAudit.reason, invariantAuditReason),
+      };
+    } else {
+      actions.unshift({
+        action: "run-constitutional-audit",
+        reason: invariantAuditReason,
+        priority: "critical",
+      });
+    }
   }
 
   return dedupePredictedActions(actions);
@@ -275,7 +303,8 @@ function mergeLineageArtifacts(
 ): GovernanceArtifact[] {
   const defaultNodeId = lineage.activeCycleId ?? lineage.activeEpochId ?? undefined;
   const artifactEntries = Object.entries(lineage.artifacts).flatMap(
-    ([type, value]) => toGovernanceArtifacts(type, value, defaultNodeId),
+    ([type, value]) =>
+      toGovernanceArtifacts(type, value, defaultNodeId, lineage.nodes),
   );
 
   const merged = new Map<string, GovernanceArtifact>();
@@ -290,16 +319,26 @@ function mergeLineageArtifacts(
 }
 
 function dedupePredictedActions(actions: PredictedAction[]): PredictedAction[] {
-  const seen = new Set<GovernanceAction>();
+  const merged = new Map<GovernanceAction, PredictedAction>();
 
-  return actions.filter((action) => {
-    if (seen.has(action.action)) {
-      return false;
+  for (const action of actions) {
+    const existing = merged.get(action.action);
+    if (!existing) {
+      merged.set(action.action, action);
+      continue;
     }
 
-    seen.add(action.action);
-    return true;
-  });
+    merged.set(action.action, {
+      action: action.action,
+      priority:
+        severityRank(action.priority) < severityRank(existing.priority)
+          ? action.priority
+          : existing.priority,
+      reason: joinDistinctReasons(existing.reason, action.reason),
+    });
+  }
+
+  return [...merged.values()];
 }
 
 function dedupeInvariantViolations(
@@ -342,21 +381,21 @@ function toGovernanceArtifacts(
   type: string,
   value: LineageState["artifacts"][string],
   defaultNodeId?: string,
+  nodes: LineageNode[] = [],
 ): GovernanceArtifact[] {
   if (!value) {
     return [];
   }
 
   if (typeof value === "string") {
-    return [
-      {
-        id: value,
-        type,
-        status: "present",
-        required: true,
-        linkedNodeId: defaultNodeId,
-      },
-    ];
+    const linkedNodeIds = findArtifactNodeIds(type, nodes, defaultNodeId);
+    return linkedNodeIds.map((linkedNodeId) => ({
+      id: value,
+      type,
+      status: "present",
+      required: true,
+      linkedNodeId,
+    }));
   }
 
   if (hasArtifactId(value)) {
@@ -366,7 +405,8 @@ function toGovernanceArtifacts(
         type,
         status: "present",
         required: true,
-        linkedNodeId: value.nodeId ?? defaultNodeId,
+        linkedNodeId:
+          value.nodeId ?? findArtifactNodeIds(type, nodes, defaultNodeId)[0],
       },
     ];
   }
@@ -384,4 +424,41 @@ function hasArtifactId(
   value: Exclude<LineageState["artifacts"][string], string | undefined>,
 ): value is { id: string; nodeId?: string } {
   return "id" in value;
+}
+
+function findArtifactNodeIds(
+  artifactType: string,
+  nodes: LineageNode[],
+  defaultNodeId?: string,
+): string[] {
+  const linkedNodeIds = nodes
+    .filter((node) =>
+      (requiredArtifactsByStatus[node.status] as readonly string[]).some(
+        (requiredArtifactType) => requiredArtifactType === artifactType,
+      ),
+    )
+    .map((node) => node.id);
+
+  if (linkedNodeIds.length > 0) {
+    return linkedNodeIds;
+  }
+
+  return defaultNodeId ? [defaultNodeId] : [];
+}
+
+function joinDistinctReasons(left: string, right: string): string {
+  return [...new Set([left, right])].join("; ");
+}
+
+function severityRank(severity: GovernanceSeverity): number {
+  switch (severity) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    case "low":
+      return 3;
+  }
 }

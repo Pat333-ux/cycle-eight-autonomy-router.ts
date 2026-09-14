@@ -113,6 +113,7 @@ export interface PredictedAction {
 export interface MissingArtifact {
   nodeId: string;
   artifactType: string;
+  status: Exclude<ArtifactStatus, "present">;
 }
 
 export interface LineageRepair {
@@ -229,10 +230,10 @@ export function runConstitutionalIntelligenceCore(
     ...evaluateRegistryViolations(input.registries, thresholds),
     ...evaluateGovernanceEvents(input.governanceEvents),
     ...missingArtifacts.map<ConstitutionalViolation>((artifact) => ({
-      code: "MISSING_ARTIFACT",
+      code: artifact.status === "stale" ? "STALE_ARTIFACT" : "MISSING_ARTIFACT",
       domain: "lineage",
       severity: "high",
-      message: `Missing ${artifact.artifactType} for lineage node ${artifact.nodeId}.`,
+      message: `${artifact.status === "stale" ? "Stale" : "Missing"} ${artifact.artifactType} for lineage node ${artifact.nodeId}.`,
     })),
     ...lineageRepairs.map<ConstitutionalViolation>((repair) => ({
       code: "BROKEN_LINEAGE",
@@ -293,13 +294,18 @@ export function findMissingArtifacts(
   const inferredMissing = lineage.flatMap((node) =>
     requiredArtifactsByStatus[node.status]
       .filter((artifactType) => !available.has(`${node.id}:${artifactType}`))
-      .map((artifactType) => ({ nodeId: node.id, artifactType })),
+      .map((artifactType) => ({
+        nodeId: node.id,
+        artifactType,
+        status: "missing" as const,
+      })),
   );
   const explicitMissing = artifacts
     .filter((artifact) => artifact.required && !isUsableArtifact(artifact))
-    .map((artifact) => ({
+    .map<MissingArtifact>((artifact) => ({
       nodeId: artifact.linkedNodeId ?? `artifact:${artifact.id}`,
       artifactType: artifact.type,
+      status: artifact.status === "stale" ? "stale" : "missing",
     }));
 
   return dedupeMissingArtifacts([...inferredMissing, ...explicitMissing]);
@@ -603,6 +609,7 @@ export function buildDirectives(
     payload: {
       nodeId: artifact.nodeId,
       artifactType: artifact.artifactType,
+      status: artifact.status,
     },
   }));
 
