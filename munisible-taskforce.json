@@ -1,0 +1,9 @@
+{
+  "taskforces": [
+    {
+      "id": "TF-001",
+      "permissions": ["deploy", "audit", "evidence.collect"],
+      "status": "inactive"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "informants": [
+    {
+      "id": "INF-001",
+      "permissions": ["report", "evidence.submit"],
+      "wellbeing": "unknown",
+      "status": "inactive"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "municipalAuthority": {
+    "level": "Tier-M",
+    "permissions": [
+      "taskforce.activate",
+      "informant.register",
+      "evidence.integrity",
+      "municipal.audit"
+    ]
+  },
+  "lineage": {
+    "activeMunicipalEpoch": null,
+    "activeMunicipalCycle": null,
+    "artifacts": {}
+  },
+  "activationFlags": {
+    "municipalBootstrap": false,
+    "municipalHarmonized": false,
+    "municipalSealed": false,
+    "municipalQuantumDeterminism": false,
+    "municipalFinalized": false
+  }
+}
