@@ -133,18 +133,67 @@ export interface MinistryRoute {
   reason: string;
 }
 
-export interface AutonomousDirective {
-  kind:
-    | "trigger-epoch"
-    | "trigger-cycle"
-    | "run-audit"
-    | "rebalance-tokenomics"
-    | "repair-lineage"
-    | "generate-artifact"
-    | "route-ministry";
-  priority: GovernanceSeverity;
-  payload: Record<string, string | number | boolean>;
-}
+export type AutonomousDirective =
+  | {
+      kind: "trigger-epoch";
+      priority: GovernanceSeverity;
+      payload: {
+        action: "trigger-wellbeing-epoch";
+        reason: string;
+      };
+    }
+  | {
+      kind: "trigger-cycle";
+      priority: GovernanceSeverity;
+      payload: {
+        action: "trigger-stability-cycle";
+        reason: string;
+      };
+    }
+  | {
+      kind: "run-audit";
+      priority: GovernanceSeverity;
+      payload: {
+        action: "run-constitutional-audit";
+        reason: string;
+      };
+    }
+  | {
+      kind: "rebalance-tokenomics";
+      priority: GovernanceSeverity;
+      payload: {
+        action: "rebalance-lucr";
+        reserveRatio: number;
+        rewardRate: number;
+        burnRate: number;
+        reason: string;
+      };
+    }
+  | {
+      kind: "repair-lineage";
+      priority: GovernanceSeverity;
+      payload: {
+        nodeId: string;
+        reason: string;
+      };
+    }
+  | {
+      kind: "generate-artifact";
+      priority: GovernanceSeverity;
+      payload: {
+        nodeId: string;
+        artifactType: string;
+        status: Exclude<ArtifactStatus, "present">;
+      };
+    }
+  | {
+      kind: "route-ministry";
+      priority: GovernanceSeverity;
+      payload: {
+        ministry: MinistryName;
+        reason: string;
+      };
+    };
 
 export interface ConstitutionalIntelligenceReport {
   sovereigntyScore: number;
@@ -594,14 +643,7 @@ export function buildDirectives(
         action.action !== "rebalance-lucr" &&
         action.action !== "reconstruct-lineage",
     )
-    .map<AutonomousDirective>((action) => ({
-      kind: directiveKindByAction[action.action],
-      priority: action.priority,
-      payload: {
-        action: action.action,
-        reason: action.reason,
-      },
-    }));
+    .map(mapPredictedActionToDirective);
 
   const artifactDirectives = missingArtifacts.map<AutonomousDirective>((artifact) => ({
     kind: "generate-artifact",
@@ -649,7 +691,7 @@ export function buildDirectives(
             kind: "rebalance-tokenomics" as const,
             priority: tokenomicsPriority,
             payload: {
-              action: "rebalance-lucr",
+              action: "rebalance-lucr" as const,
               reserveRatio: tokenomicsDirective.reserveRatio,
               rewardRate: tokenomicsDirective.rewardRate,
               burnRate: tokenomicsDirective.burnRate,
@@ -722,20 +764,71 @@ function isUsableArtifact(artifact: GovernanceArtifact): boolean {
   return artifact.status === "present";
 }
 
+function missingArtifactStatusRank(
+  status: MissingArtifact["status"],
+): number {
+  switch (status) {
+    case "stale":
+      return 0;
+    case "missing":
+      return 1;
+  }
+}
+
+function mapPredictedActionToDirective(
+  action: PredictedAction,
+): Extract<
+  AutonomousDirective,
+  { kind: "trigger-epoch" | "trigger-cycle" | "run-audit" }
+> {
+  switch (action.action) {
+    case "trigger-wellbeing-epoch":
+      return {
+        kind: "trigger-epoch",
+        priority: action.priority,
+        payload: {
+          action: "trigger-wellbeing-epoch",
+          reason: action.reason,
+        },
+      };
+    case "trigger-stability-cycle":
+      return {
+        kind: "trigger-cycle",
+        priority: action.priority,
+        payload: {
+          action: "trigger-stability-cycle",
+          reason: action.reason,
+        },
+      };
+    case "run-constitutional-audit":
+      return {
+        kind: "run-audit",
+        priority: action.priority,
+        payload: {
+          action: "run-constitutional-audit",
+          reason: action.reason,
+        },
+      };
+    case "rebalance-lucr":
+    case "reconstruct-lineage":
+      throw new Error(`Unsupported direct action mapping for ${action.action}.`);
+  }
+}
+
 function dedupeMissingArtifacts(
   artifacts: MissingArtifact[],
 ): MissingArtifact[] {
-  const seen = new Set<string>();
+  const deduped = new Map<string, MissingArtifact>();
 
-  return artifacts.filter((artifact) => {
+  for (const artifact of artifacts) {
     const key = `${artifact.nodeId}:${artifact.artifactType}`;
-    if (seen.has(key)) {
-      return false;
+    const existing = deduped.get(key);
+    if (!existing || missingArtifactStatusRank(artifact.status) < missingArtifactStatusRank(existing.status)) {
+      deduped.set(key, artifact);
     }
+  }
 
-    seen.add(key);
-    return true;
-  });
+  return [...deduped.values()];
 }
 
 function sortDirectives(

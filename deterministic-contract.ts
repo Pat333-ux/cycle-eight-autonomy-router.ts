@@ -49,9 +49,17 @@ export type LineageState = {
     | string
     | {
         id: string;
+        status?: "present" | "missing" | "stale";
         nodeId?: string;
       }
-    | Record<string, string>
+    | Record<
+        string,
+        | string
+        | {
+            id: string;
+            status?: "present" | "missing" | "stale";
+          }
+      >
     | undefined
   >;
   nodes: LineageNode[];
@@ -259,10 +267,7 @@ export function evaluateConstitutionalRules(
       const existingAudit = actions[existingAuditIndex];
       actions[existingAuditIndex] = {
         ...existingAudit,
-        priority:
-          severityRank(existingAudit.priority) < severityRank("critical")
-            ? existingAudit.priority
-            : "critical",
+        priority: moreSeverePriority(existingAudit.priority, "critical"),
         reason: joinDistinctReasons(existingAudit.reason, invariantAuditReason),
       };
     } else {
@@ -403,7 +408,7 @@ function toGovernanceArtifacts(
       {
         id: value.id,
         type,
-        status: "present",
+        status: value.status ?? "present",
         required: true,
         linkedNodeId:
           value.nodeId ?? findArtifactNodeIds(type, nodes, defaultNodeId)[0],
@@ -411,10 +416,13 @@ function toGovernanceArtifacts(
     ];
   }
 
-  return Object.entries(value).map(([nodeId, artifactId]) => ({
-    id: artifactId,
+  return Object.entries(value).map(([nodeId, artifactValue]) => ({
+    id: typeof artifactValue === "string" ? artifactValue : artifactValue.id,
     type,
-    status: "present",
+    status:
+      typeof artifactValue === "string"
+        ? "present"
+        : artifactValue.status ?? "present",
     required: true,
     linkedNodeId: nodeId,
   }));
@@ -422,7 +430,7 @@ function toGovernanceArtifacts(
 
 function hasArtifactId(
   value: Exclude<LineageState["artifacts"][string], string | undefined>,
-): value is { id: string; nodeId?: string } {
+): value is { id: string; status?: "present" | "missing" | "stale"; nodeId?: string } {
   return "id" in value;
 }
 
@@ -461,4 +469,11 @@ function severityRank(severity: GovernanceSeverity): number {
     case "low":
       return 3;
   }
+}
+
+function moreSeverePriority(
+  left: GovernanceSeverity,
+  right: GovernanceSeverity,
+): GovernanceSeverity {
+  return severityRank(left) < severityRank(right) ? left : right;
 }
