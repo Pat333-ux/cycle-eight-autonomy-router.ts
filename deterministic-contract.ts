@@ -74,6 +74,11 @@ export type CitizenObject = {
   assignedMinistry?: string;
 };
 
+export type SystemEvent = GovernanceEvent;
+export type RegistryState = RegistrySnapshot;
+export type GovernanceArtifacts = GovernanceArtifact[];
+export type OrchestrationAction = PredictedAction;
+
 export type InvariantViolation = {
   code: string;
   severity: GovernanceSeverity;
