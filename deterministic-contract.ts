@@ -311,7 +311,7 @@ function normalizeContractInput(
     lineage: input.lineage.nodes,
     lineageState: input.lineage,
     registries: input.registries,
-    governanceArtifacts: mergeLineageArtifacts(
+    governanceArtifacts: buildDeterministicGovernanceArtifacts(
       input.lineage,
       input.governanceArtifacts,
     ),
@@ -321,7 +321,7 @@ function normalizeContractInput(
   };
 }
 
-function mergeLineageArtifacts(
+export function buildDeterministicGovernanceArtifacts(
   lineage: LineageState,
   governanceArtifacts: GovernanceArtifact[],
 ): GovernanceArtifact[] {

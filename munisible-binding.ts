@@ -6,6 +6,7 @@ import {
   runConstitutionalIntelligenceCore,
 } from "./constitutional-intelligence-core";
 import {
+  buildDeterministicGovernanceArtifacts,
   type DeterministicOutput,
   type GovernanceArtifacts,
   type LineageState,
@@ -128,6 +129,10 @@ export function bindMunisibleOperations(
     munisibleArtifacts,
     normalizedEvent,
   );
+  const effectiveGovernanceArtifacts = buildDeterministicGovernanceArtifacts(
+    lineage,
+    municipalGovernanceArtifacts,
+  );
   const deterministicOutput = runDeterministicContract({
     lineage,
     registries,
@@ -137,7 +142,7 @@ export function bindMunisibleOperations(
   const constitutionalReport = runConstitutionalIntelligenceCore({
     lineage: lineage.nodes,
     registries,
-    governanceArtifacts: municipalGovernanceArtifacts,
+    governanceArtifacts: effectiveGovernanceArtifacts,
     governanceEvents: [normalizedEvent],
   });
   const municipalActions = routeMunicipalActions(
@@ -168,7 +173,7 @@ export function normalizeMunicipalEvent(
 ): MunicipalBindingEvent {
   return {
     ...event,
-    municipalityId: event.municipalityId || registry.municipalityId,
+    municipalityId: registry.municipalityId,
     type: event.type.trim(),
   };
 }
@@ -276,12 +281,14 @@ export function evaluateMunicipalRulesEngine(
       priority: "medium",
       reason: "Municipal intelligence routing is required for citizen-level signal handling.",
     });
-    actions.push({
-      kind: "route-github",
-      target: "Munisible_TaskForce",
-      priority: "medium",
-      reason: "Task force routing is required for the municipal intelligence execution path.",
-    });
+    if (munisibleArtifacts.taskForce.permissions.routeCitizens) {
+      actions.push({
+        kind: "route-github",
+        target: "Munisible_TaskForce",
+        priority: "medium",
+        reason: "Task force routing is required for the municipal intelligence execution path.",
+      });
+    }
   }
 
   return dedupeMunicipalActions(actions);
@@ -440,8 +447,13 @@ function dedupeMunicipalActions(
       continue;
     }
 
+    const prioritizedAction =
+      severityRank(action.priority) < severityRank(existing.priority)
+        ? action
+        : existing;
+
     merged.set(key, {
-      ...action,
+      ...prioritizedAction,
       priority:
         severityRank(action.priority) < severityRank(existing.priority)
           ? action.priority

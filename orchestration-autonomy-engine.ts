@@ -55,6 +55,7 @@ export type LucrAutonomyExecution = {
   quote: LucrQuote;
   executionSteps: LucrExecutionStep[];
   allowed: boolean;
+  requiresAudit: boolean;
 };
 
 export function orchestrateLucrLifecycle(
@@ -78,6 +79,9 @@ export function orchestrateLucrLifecycle(
     authorizedActions.every(
       (action) => action.action === "run-constitutional-audit",
     );
+  const hasOperationAuthorization = authorizedActions.some(
+    (action) => action.action !== "run-constitutional-audit",
+  );
 
   return {
     request,
@@ -87,9 +91,8 @@ export function orchestrateLucrLifecycle(
     blockedActions,
     quote,
     executionSteps: buildExecutionSteps(request, quote, authorizedActions),
-    allowed:
-      authorizedActions.length > 0 &&
-      (blockedActions.length === 0 || hasAuditOnlyPath),
+    allowed: hasOperationAuthorization && blockedActions.length === 0,
+    requiresAudit: hasAuditOnlyPath,
   };
 }
 
@@ -125,7 +128,7 @@ export function quoteLucrLifecycle(
       return {
         paymentAsset: "LUCR",
         paymentAmount: 0,
-        lucrAmount: 0,
+        lucrAmount: request.amount,
       };
   }
 }
