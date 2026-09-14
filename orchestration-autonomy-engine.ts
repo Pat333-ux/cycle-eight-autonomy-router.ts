@@ -34,6 +34,7 @@ export type LucrExecutionStep = {
   method:
     | "quote-buy"
     | "quote-sell"
+    | "run-audit"
     | "request-mint"
     | "request-burn"
     | "mint"
@@ -72,6 +73,11 @@ export function orchestrateLucrLifecycle(
   const quote = quoteLucrLifecycle(request, registries);
   const authorizedActions = filterAuthorizedLucrActions(request, binding);
   const blockedActions = binding.blockedRouterActions;
+  const hasAuditOnlyPath =
+    authorizedActions.length > 0 &&
+    authorizedActions.every(
+      (action) => action.action === "run-constitutional-audit",
+    );
 
   return {
     request,
@@ -82,9 +88,8 @@ export function orchestrateLucrLifecycle(
     quote,
     executionSteps: buildExecutionSteps(request, quote, authorizedActions),
     allowed:
-      binding.shouldExecute &&
-      blockedActions.length === 0 &&
-      authorizedActions.length > 0,
+      authorizedActions.length > 0 &&
+      (blockedActions.length === 0 || hasAuditOnlyPath),
   };
 }
 
@@ -119,7 +124,7 @@ export function quoteLucrLifecycle(
     case "burn":
       return {
         paymentAsset: "LUCR",
-        paymentAmount: request.amount,
+        paymentAmount: 0,
         lucrAmount: 0,
       };
   }
@@ -130,24 +135,30 @@ function filterAuthorizedLucrActions(
   binding: RouterBindingResult,
 ): OrchestrationAction[] {
   const allowedByBinding = binding.allowedRouterActions;
+  const auditActions = binding.deterministicOutput.actions.filter(
+    (action) => action.action === "run-constitutional-audit",
+  );
+  const operationActions = (() => {
+    switch (request.operation) {
+      case "buy":
+      case "sell":
+        return allowedByBinding.filter((action) => action.action === "rebalance-lucr");
+      case "mint":
+        return allowedByBinding.filter(
+          (action) =>
+            action.action === "rebalance-lucr" ||
+            action.action === "trigger-wellbeing-epoch",
+        );
+      case "burn":
+        return allowedByBinding.filter(
+          (action) =>
+            action.action === "rebalance-lucr" ||
+            action.action === "run-constitutional-audit",
+        );
+    }
+  })();
 
-  switch (request.operation) {
-    case "buy":
-    case "sell":
-      return allowedByBinding.filter((action) => action.action === "rebalance-lucr");
-    case "mint":
-      return allowedByBinding.filter(
-        (action) =>
-          action.action === "rebalance-lucr" ||
-          action.action === "trigger-wellbeing-epoch",
-      );
-    case "burn":
-      return allowedByBinding.filter(
-        (action) =>
-          action.action === "rebalance-lucr" ||
-          action.action === "run-constitutional-audit",
-      );
-  }
+  return mergeActions([...auditActions, ...operationActions]);
 }
 
 function buildExecutionSteps(
@@ -161,6 +172,24 @@ function buildExecutionSteps(
         stage: "offchain",
         method: "run-deterministic-contract",
         reason: "Deterministic contract denied autonomous LUCR execution.",
+      },
+    ];
+  }
+  const hasOperationAuthorization = actions.some(
+    (action) => action.action !== "run-constitutional-audit",
+  );
+
+  if (!hasOperationAuthorization) {
+    return [
+      {
+        stage: "offchain",
+        method: "run-deterministic-contract",
+        reason: "Evaluate constitutional invariants and deterministic governance before execution.",
+      },
+      {
+        stage: "governance",
+        method: "run-audit",
+        reason: "Run the contract-approved constitutional audit path before any LUCR lifecycle execution.",
       },
     ];
   }
@@ -274,4 +303,44 @@ function mapLucrRequestToEvent(request: LucrLifecycleRequest): SystemEvent {
 
 function roundToFour(value: number): number {
   return Math.round(value * 10000) / 10000;
+}
+
+function mergeActions(actions: OrchestrationAction[]): OrchestrationAction[] {
+  const merged = new Map<OrchestrationAction["action"], OrchestrationAction>();
+
+  for (const action of actions) {
+    const existing = merged.get(action.action);
+    if (!existing) {
+      merged.set(action.action, action);
+      continue;
+    }
+
+    merged.set(action.action, {
+      action: action.action,
+      priority:
+        severityRank(action.priority) < severityRank(existing.priority)
+          ? action.priority
+          : existing.priority,
+      reason: joinDistinctReasons(existing.reason, action.reason),
+    });
+  }
+
+  return [...merged.values()];
+}
+
+function joinDistinctReasons(left: string, right: string): string {
+  return [...new Set([left, right])].join("; ");
+}
+
+function severityRank(priority: OrchestrationAction["priority"]): number {
+  switch (priority) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    case "low":
+      return 3;
+  }
 }

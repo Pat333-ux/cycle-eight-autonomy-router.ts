@@ -67,16 +67,26 @@ export function evaluateCycleEight(
 }
 
 function dedupeActions(actions: OrchestrationAction[]): OrchestrationAction[] {
-  const seen = new Set<string>();
+  const merged = new Map<OrchestrationAction["action"], OrchestrationAction>();
 
-  return actions.filter((action) => {
-    if (seen.has(action.action)) {
-      return false;
+  for (const action of actions) {
+    const existing = merged.get(action.action);
+    if (!existing) {
+      merged.set(action.action, action);
+      continue;
     }
 
-    seen.add(action.action);
-    return true;
-  });
+    merged.set(action.action, {
+      action: action.action,
+      priority:
+        severityRank(action.priority) < severityRank(existing.priority)
+          ? action.priority
+          : existing.priority,
+      reason: joinDistinctReasons(existing.reason, action.reason),
+    });
+  }
+
+  return [...merged.values()];
 }
 
 function isAuditEvent(event: SystemEvent): boolean {
@@ -132,4 +142,21 @@ function getTokenomicsPressure(
   }
 
   return null;
+}
+
+function joinDistinctReasons(left: string, right: string): string {
+  return [...new Set([left, right])].join("; ");
+}
+
+function severityRank(priority: OrchestrationAction["priority"]): number {
+  switch (priority) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    case "low":
+      return 3;
+  }
 }
