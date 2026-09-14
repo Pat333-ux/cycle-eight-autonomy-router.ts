@@ -6,3 +6,5 @@ This repository now also includes `constitutional-intelligence-core.ts`, a pure 
 It also includes `deterministic-contract.ts`, a root deterministic governance contract that formalizes invariant evaluation, constitutional action emission, and self-healing lineage repair as a single pure artifact layered on top of the constitutional core.
 
 It also includes `cycle-eight-autonomy-router.ts` and `autonomy-router-binding.ts`, which propose router-level actions and then bind those actions through the deterministic contract so only constitutionally allowed autonomy executes.
+
+It also includes `orchestration-autonomy-engine.ts`, a pure LUCR lifecycle orchestrator that routes deterministic buy, sell, mint, and burn requests through the autonomy router binding before producing governance, token-core, market-router, and off-chain execution steps.
