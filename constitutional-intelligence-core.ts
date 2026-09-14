@@ -553,25 +553,22 @@ export function routeMinistries(
   violations: ConstitutionalViolation[],
   actions: PredictedAction[],
 ): MinistryRoute[] {
-  const routes = new Map<MinistryName, MinistryRoute>();
+  const routes = new Map<MinistryName, Set<string>>();
 
   for (const violation of violations) {
     const ministry = ministryByDomain[violation.domain];
-    routes.set(ministry, {
-      ministry,
-      reason: violation.message,
-    });
+    appendRouteReason(routes, ministry, violation.message);
   }
 
   for (const action of actions) {
     const ministry = ministryByAction[action.action];
-    routes.set(ministry, {
-      ministry,
-      reason: action.reason,
-    });
+    appendRouteReason(routes, ministry, action.reason);
   }
 
-  return [...routes.values()];
+  return [...routes.entries()].map(([ministry, reasons]) => ({
+    ministry,
+    reason: [...reasons].join("; "),
+  }));
 }
 
 export function buildDirectives(
@@ -582,7 +579,11 @@ export function buildDirectives(
   tokenomicsDirective: TokenomicsDirective,
 ): AutonomousDirective[] {
   const actionDirectives = actions
-    .filter((action) => action.action !== "rebalance-lucr")
+    .filter(
+      (action) =>
+        action.action !== "rebalance-lucr" &&
+        action.action !== "reconstruct-lineage",
+    )
     .map<AutonomousDirective>((action) => ({
       kind: directiveKindByAction[action.action],
       priority: action.priority,
@@ -651,11 +652,13 @@ export function calculateSovereigntyScore(
   violations: ConstitutionalViolation[],
   lineageRepairs: LineageRepair[],
 ): number {
+  const lineageIntegrityScore = registries.lineageIntegrityScore ?? 100;
   const baseScore =
-    registries.wellbeingScore * 0.3 +
+    registries.wellbeingScore * 0.25 +
     registries.authorityBalanceScore * 0.2 +
-    registries.complianceScore * 0.3 +
-    registries.cycleStabilityScore * 0.2;
+    registries.complianceScore * 0.25 +
+    registries.cycleStabilityScore * 0.15 +
+    lineageIntegrityScore * 0.15;
   const violationPenalty = violations.reduce(
     (penalty, violation) => penalty + severityPenalty(violation.severity),
     0,
@@ -676,6 +679,16 @@ function dedupeActions(actions: PredictedAction[]): PredictedAction[] {
     seen.add(action.action);
     return true;
   });
+}
+
+function appendRouteReason(
+  routes: Map<MinistryName, Set<string>>,
+  ministry: MinistryName,
+  reason: string,
+): void {
+  const reasons = routes.get(ministry) ?? new Set<string>();
+  reasons.add(reason);
+  routes.set(ministry, reasons);
 }
 
 function hasTokenomicsAdjustment(
