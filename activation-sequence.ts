@@ -286,7 +286,7 @@ function buildActivationStages(
       stage: "activation-artifacts",
       completed: artifacts
         .filter((artifact) => artifact.required)
-        .every((artifact) => artifact.status === "present" || artifact.type === "activation-seal"),
+        .every((artifact) => artifact.status === "present"),
       reason: "Activation artifacts preserve conditions, lineage, seal, and finalization evidence.",
     },
     {

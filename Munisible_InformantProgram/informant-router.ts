@@ -27,7 +27,9 @@ export function evaluateInformant(
   registry: InformantRegistry,
 ): InformantRouterAction[] {
   const actions: InformantRouterAction[] = [];
-  const activeInformant = registry.informants[0];
+  const activeInformant = registry.informants.find(
+    (informant) => informant.status === "active",
+  );
 
   if (
     event.type === "InformantRegistered" &&

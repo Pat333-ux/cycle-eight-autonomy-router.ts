@@ -26,7 +26,9 @@ export function evaluateTaskForce(
   registry: TaskForceRegistry,
 ): TaskForceRouterAction[] {
   const actions: TaskForceRouterAction[] = [];
-  const activeTaskForce = registry.taskforces[0];
+  const activeTaskForce = registry.taskforces.find(
+    (taskForce) => taskForce.status === "active",
+  );
 
   if (
     event.type === "MunicipalFinalDeterministicHashEmitted" &&

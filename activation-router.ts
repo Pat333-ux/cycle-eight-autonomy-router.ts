@@ -165,7 +165,14 @@ function methodByTarget(
         ? "repair-municipal-lineage"
         : "start-municipal-operation";
     case "tokenomics":
-      return "rebalance-lucr";
+      if (event.activationClass === "tokenomic-adjustment") {
+        return "rebalance-lucr";
+      }
+
+      return (
+        event.sourceActions.find((action) => action.startsWith("authorize-lucr-")) ??
+        "govern-tokenomics"
+      );
     case "citizen-governance":
       return event.activationClass === "governance-cycle"
         ? "start-governance-cycle"
