@@ -128,7 +128,7 @@ export function quoteLucrLifecycle(
       return {
         paymentAsset: "LUCR",
         paymentAmount: 0,
-        lucrAmount: request.amount,
+        lucrAmount: roundToFour(request.amount),
       };
   }
 }

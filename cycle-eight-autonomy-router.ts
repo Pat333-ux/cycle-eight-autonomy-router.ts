@@ -132,7 +132,7 @@ function getTokenomicsPressure(
 
   if (
     registries.citizenCount >
-    (registries.previousCitizenCount ?? registries.citizenCount)
+    (registries.previousCitizenCount ?? 0)
   ) {
     return "citizen-growth";
   }

@@ -314,7 +314,9 @@ export function routeMunicipalActions(
 
   return dedupeMunicipalActions([
     ...rulesEngineActions,
-    ...deterministicActions,
+    ...deterministicActions.filter(
+      (action): action is MunicipalAction => action !== null,
+    ),
   ]);
 }
 
@@ -388,7 +390,7 @@ function mergeMunicipalArtifacts(
 
 function mapDeterministicActionToMunicipalRoute(
   action: OrchestrationAction,
-): MunicipalAction {
+): MunicipalAction | null {
   switch (action.action) {
     case "run-constitutional-audit":
       return {
@@ -420,6 +422,8 @@ function mapDeterministicActionToMunicipalRoute(
         reason: action.reason,
       };
   }
+
+  return null;
 }
 
 function normalizedMunicipalIntelligenceNeeded(
