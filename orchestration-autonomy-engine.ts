@@ -71,10 +71,7 @@ export function orchestrateLucrLifecycle(
   );
   const quote = quoteLucrLifecycle(request, registries);
   const authorizedActions = filterAuthorizedLucrActions(request, binding);
-  const blockedActions = binding.proposedRouterActions.filter(
-    (action) =>
-      !authorizedActions.some((authorized) => authorized.action === action.action),
-  );
+  const blockedActions = binding.blockedRouterActions;
 
   return {
     request,
@@ -84,7 +81,10 @@ export function orchestrateLucrLifecycle(
     blockedActions,
     quote,
     executionSteps: buildExecutionSteps(request, quote, authorizedActions),
-    allowed: binding.shouldExecute && blockedActions.length === 0,
+    allowed:
+      binding.shouldExecute &&
+      blockedActions.length === 0 &&
+      authorizedActions.length > 0,
   };
 }
 

@@ -84,7 +84,9 @@ export function filterAllowedRouterActions(
 
   if (hasBlockingInvariant(deterministicOutput)) {
     return proposedActions.filter(
-      (action) => action.action === "run-constitutional-audit",
+      (action) =>
+        action.action === "run-constitutional-audit" &&
+        allowedActionTypes.has(action.action),
     );
   }
 

@@ -172,10 +172,15 @@ export type AutonomousDirective =
   | {
       kind: "repair-lineage";
       priority: GovernanceSeverity;
-      payload: {
-        nodeId: string;
-        reason: string;
-      };
+      payload:
+        | {
+            nodeId: string;
+            reason: string;
+          }
+        | {
+            action: "reconstruct-lineage";
+            reason: string;
+          };
     }
   | {
       kind: "generate-artifact";
@@ -639,11 +644,14 @@ export function buildDirectives(
   ministryRoutes: MinistryRoute[],
   tokenomicsDirective: TokenomicsDirective,
 ): AutonomousDirective[] {
+  const hasConcreteLineageDirectives =
+    missingArtifacts.length > 0 || lineageRepairs.length > 0;
   const actionDirectives = actions
     .filter(
       (action) =>
         action.action !== "rebalance-lucr" &&
-        action.action !== "reconstruct-lineage",
+        (action.action !== "reconstruct-lineage" ||
+          !hasConcreteLineageDirectives),
     )
     .map(mapPredictedActionToDirective);
 
@@ -800,7 +808,7 @@ function mapPredictedActionToDirective(
   action: PredictedAction,
 ): Extract<
   AutonomousDirective,
-  { kind: "trigger-epoch" | "trigger-cycle" | "run-audit" }
+  { kind: "trigger-epoch" | "trigger-cycle" | "run-audit" | "repair-lineage" }
 > {
   switch (action.action) {
     case "trigger-wellbeing-epoch":
@@ -830,8 +838,16 @@ function mapPredictedActionToDirective(
           reason: action.reason,
         },
       };
-    case "rebalance-lucr":
     case "reconstruct-lineage":
+      return {
+        kind: "repair-lineage",
+        priority: action.priority,
+        payload: {
+          action: "reconstruct-lineage",
+          reason: action.reason,
+        },
+      };
+    case "rebalance-lucr":
       throw new Error(`Unsupported direct action mapping for ${action.action}.`);
   }
 }
