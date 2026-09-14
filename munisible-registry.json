@@ -1,43 +1,23 @@
 {
-  "municipalityId": "tier0-municipal-core",
-  "authorityLevels": {
-    "municipal-council": "oversight",
-    "task-force-command": "operational",
-    "informant-program": "restricted",
-    "wellbeing-office": "protective"
+  "municipalAuthority": {
+    "level": "Tier-M",
+    "permissions": [
+      "taskforce.activate",
+      "informant.register",
+      "evidence.integrity",
+      "municipal.audit"
+    ]
   },
-  "taskForcePermissions": {
-    "activate": true,
-    "route": true,
-    "audit": true,
-    "compliance": true
-  },
-  "informantProgramPermissions": {
-    "register": true,
-    "route": true,
-    "evidenceAccess": "restricted",
-    "wellbeingEscalation": true
-  },
-  "complianceRules": {
-    "requireEvidenceIntegrity": true,
-    "requireTraumaPrevention": true,
-    "requireMunicipalAuditOnViolation": true,
-    "requireTier0AuthorityAlignment": true
+  "lineage": {
+    "activeMunicipalEpoch": null,
+    "activeMunicipalCycle": null,
+    "artifacts": {}
   },
   "activationFlags": {
-    "municipalBootstrap": true,
-    "municipalHarmonizer": true,
-    "municipalSeal": true,
-    "municipalQuantumDeterminism": true,
-    "municipalFinalizer": false
-  },
-  "lineageState": {
-    "activeMunicipalEpochId": "municipal-epoch-1",
-    "activeMunicipalCycleId": "municipal-cycle-1",
-    "municipalBootstrapHash": "mboot-001",
-    "municipalHarmonizedHash": "mharm-001",
-    "municipalSealHash": "mseal-001",
-    "municipalQuantumDeterminismHash": "mquant-001",
-    "municipalFinalDeterministicHash": null
+    "municipalBootstrap": false,
+    "municipalHarmonized": false,
+    "municipalSealed": false,
+    "municipalQuantumDeterminism": false,
+    "municipalFinalized": false
   }
 }

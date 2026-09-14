@@ -9,4 +9,6 @@ It also includes `cycle-eight-autonomy-router.ts` and `autonomy-router-binding.t
 
 It also includes `orchestration-autonomy-engine.ts`, a pure LUCR lifecycle orchestrator that routes deterministic buy, sell, mint, and burn requests through the autonomy router binding before producing governance, token-core, market-router, and off-chain execution steps.
 
-It also includes `munisible-binding.ts` plus the `munisible-registry.json`, `munisible-taskforce.json`, and `munisible-informants.json` artifacts for the Munisible Operations municipal subsystem, modeling deterministic municipal operations, task force routing, informant protections, evidence integrity, and municipal contract binding.
+It also includes `munisible-binding.ts`, `municipal-router.ts`, `taskforce-router.ts`, and `informant-router.ts` plus the `munisible-registry.json`, `munisible-taskforce.json`, and `munisible-informants.json` artifacts for the Munisible Operations municipal subsystem.
+
+The municipal repository-style layout is split across `Munisible_Core/`, `Munisible_TaskForce/`, `Munisible_InformantProgram/`, and `Munisible_MunicipalRouter/`, where municipal events are normalized, passed through the deterministic contract and constitutional intelligence core, and then routed into municipal hash emission, task force actions, and informant-program actions.
