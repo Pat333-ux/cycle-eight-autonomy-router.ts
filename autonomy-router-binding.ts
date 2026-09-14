@@ -21,21 +21,22 @@ export type RouterBindingResult = {
   shouldExecute: boolean;
 };
 
-export async function bindAutonomyRouterToDeterministicContract(
+export function bindAutonomyRouterToDeterministicContract(
   event: SystemEvent,
   lineage: LineageState,
   registries: RegistryState,
   governanceArtifacts: GovernanceArtifacts,
-): Promise<RouterBindingResult> {
+): RouterBindingResult {
+  const normalizedEvent = normalizeSystemEvent(event);
   const deterministicInput = normalizeBindingInput(
-    event,
+    normalizedEvent,
     lineage,
     registries,
     governanceArtifacts,
   );
   const deterministicOutput = runDeterministicContract(deterministicInput);
   const proposedRouterActions = evaluateCycleEight({
-    event,
+    event: normalizedEvent,
     lineage,
     registries,
     governanceArtifacts: deterministicInput.governanceArtifacts,
@@ -69,7 +70,7 @@ export function normalizeBindingInput(
     lineage,
     registries,
     governanceArtifacts,
-    events: [normalizeSystemEvent(event)],
+    events: [event],
   };
 }
 
