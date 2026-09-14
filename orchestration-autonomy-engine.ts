@@ -102,20 +102,26 @@ export function quoteLucrLifecycle(
 ): LucrQuote {
   const rewardMultiplier = 1 + registries.lucr.rewardRate;
   const burnMultiplier = Math.max(0, 1 - registries.lucr.burnRate);
+  const paymentAsset = request.paymentAsset ?? "USDC";
+  const normalizedPaymentAmount =
+    (request.paymentAmount ?? request.amount) *
+    assetConversionRateByPaymentAsset[paymentAsset];
 
   switch (request.operation) {
     case "buy": {
-      const paymentAmount = request.paymentAmount ?? request.amount;
       return {
-        paymentAsset: request.paymentAsset ?? "USDC",
-        paymentAmount,
-        lucrAmount: roundToFour(paymentAmount * rewardMultiplier),
+        paymentAsset,
+        paymentAmount: request.paymentAmount ?? request.amount,
+        lucrAmount: roundToFour(normalizedPaymentAmount * rewardMultiplier),
       };
     }
     case "sell":
+      const payoutInUsdc = request.amount * burnMultiplier;
       return {
-        paymentAsset: request.paymentAsset ?? "USDC",
-        paymentAmount: roundToFour(request.amount * burnMultiplier),
+        paymentAsset,
+        paymentAmount: roundToFour(
+          payoutInUsdc / assetConversionRateByPaymentAsset[paymentAsset],
+        ),
         lucrAmount: request.amount,
       };
     case "mint":
@@ -320,6 +326,11 @@ const authorizationActionByOperation = {
   sell: "authorize-lucr-sell",
   mint: "authorize-lucr-mint",
   burn: "authorize-lucr-burn",
+} as const;
+
+const assetConversionRateByPaymentAsset = {
+  ETH: 2500,
+  USDC: 1,
 } as const;
 
 function mergeActions(actions: OrchestrationAction[]): OrchestrationAction[] {

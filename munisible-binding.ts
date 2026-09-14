@@ -196,6 +196,7 @@ export function evaluateMunicipalRulesEngine(
     (invariant) => invariant.severity === "critical",
   );
   const hasEvidenceGap =
+    isEvidenceEvent(event) &&
     !event.evidenceHash &&
     Boolean(munisibleArtifacts.registry.complianceRules.requireEvidenceIntegrity);
   const hasTaskForceActivation =
@@ -458,6 +459,10 @@ function isInformantProtectionEvent(
   event: MunicipalBindingEvent,
 ): boolean {
   return event.type.toLowerCase().includes("informant");
+}
+
+function isEvidenceEvent(event: MunicipalBindingEvent): boolean {
+  return event.type.toLowerCase().includes("evidence");
 }
 
 function dedupeMunicipalActions(

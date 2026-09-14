@@ -56,7 +56,9 @@ export function bindAutonomyRouterToDeterministicContract(
     proposedRouterActions,
     allowedRouterActions,
     blockedRouterActions,
-    shouldExecute: allowedRouterActions.length > 0,
+    shouldExecute: allowedRouterActions.some(
+      (action) => action.action !== "run-constitutional-audit",
+    ),
   };
 }
 
