@@ -340,7 +340,7 @@ export function buildDeterministicGovernanceArtifacts(
   lineage: LineageState,
   governanceArtifacts: GovernanceArtifact[],
 ): GovernanceArtifact[] {
-  const defaultNodeId = lineage.activeCycleId ?? lineage.activeEpochId ?? undefined;
+  const defaultNodeId = resolveDefaultArtifactNodeId(lineage);
   const artifactEntries = Object.entries(lineage.artifacts).flatMap(
     ([type, value]) =>
       toGovernanceArtifacts(type, value, defaultNodeId, lineage.nodes),
@@ -355,6 +355,20 @@ export function buildDeterministicGovernanceArtifacts(
   }
 
   return [...merged.values()];
+}
+
+function resolveDefaultArtifactNodeId(
+  lineage: LineageState,
+): string | undefined {
+  if (lineage.activeCycleId) {
+    return lineage.nodes.find((node) => node.cycleId === lineage.activeCycleId)?.id;
+  }
+
+  if (lineage.activeEpochId) {
+    return lineage.nodes.find((node) => node.epochId === lineage.activeEpochId)?.id;
+  }
+
+  return lineage.nodes[0]?.id;
 }
 
 function dedupePredictedActions(actions: PredictedAction[]): PredictedAction[] {

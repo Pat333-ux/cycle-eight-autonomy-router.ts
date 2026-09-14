@@ -69,8 +69,7 @@ export function buildActivationSequence(input: {
   const linkedNodeId = input.event.lineageNodeId ?? resolveLinkedNodeId(input.lineage);
   const lineage = buildActivationLineage(input.event, linkedNodeId);
   const conditions = buildActivationConditions(input.event, linkedNodeId);
-  const finalizable =
-    conditions.every((condition) => condition.satisfied) || isProtectiveActivation(input.event);
+  const finalizable = conditions.every((condition) => condition.satisfied);
   const seal = buildActivationSeal(input.event, lineage, conditions);
   const quantumDeterminism = buildActivationQuantumDeterminism(
     input.event,

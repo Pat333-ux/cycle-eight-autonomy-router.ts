@@ -100,6 +100,10 @@ export function quoteLucrLifecycle(
   request: LucrLifecycleRequest,
   registries: RegistryState,
 ): LucrQuote {
+  if (request.operation === "sell" && !request.paymentAsset) {
+    throw new Error("Sell requests must declare a payout asset for deterministic quoting.");
+  }
+
   const rewardMultiplier = 1 + registries.lucr.rewardRate;
   const burnMultiplier = Math.max(0, 1 - registries.lucr.burnRate);
   const paymentAsset = request.paymentAsset ?? "USDC";

@@ -26,26 +26,35 @@ export function evaluateTaskForce(
   registry: TaskForceRegistry,
 ): TaskForceRouterAction[] {
   const actions: TaskForceRouterAction[] = [];
-  const activeTaskForce = registry.taskforces.find(
-    (taskForce) => taskForce.status === "active",
+  const deploymentTaskForce = registry.taskforces.find(
+    (taskForce) =>
+      taskForce.status === "inactive" &&
+      taskForce.permissions.includes("deploy"),
+  );
+  const evidenceTaskForce = registry.taskforces.find(
+    (taskForce) =>
+      taskForce.status === "active" &&
+      (taskForce.permissions.includes("audit") ||
+        taskForce.permissions.includes("evidence.collect")),
   );
 
   if (
     event.type === "MunicipalFinalDeterministicHashEmitted" &&
-    activeTaskForce?.permissions.includes("deploy")
+    deploymentTaskForce
   ) {
     actions.push({
       kind: "UPDATE_REGISTRY",
       registryId: "munisible-taskforce.json",
-      patch: { status: "active" },
+      patch: {
+        id: deploymentTaskForce.id,
+        status: "active",
+      },
     });
   }
 
   if (
     event.type === "EvidenceSubmitted" &&
-    activeTaskForce &&
-    (activeTaskForce.permissions.includes("audit") ||
-      activeTaskForce.permissions.includes("evidence.collect"))
+    evidenceTaskForce
   ) {
     actions.push({
       kind: "TRIGGER_WORKFLOW",

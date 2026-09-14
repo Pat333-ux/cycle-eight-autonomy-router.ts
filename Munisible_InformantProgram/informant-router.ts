@@ -27,24 +27,34 @@ export function evaluateInformant(
   registry: InformantRegistry,
 ): InformantRouterAction[] {
   const actions: InformantRouterAction[] = [];
-  const activeInformant = registry.informants.find(
-    (informant) => informant.status === "active",
+  const registeringInformant = registry.informants.find(
+    (informant) =>
+      informant.status === "inactive" &&
+      informant.permissions.includes("report"),
+  );
+  const evidenceInformant = registry.informants.find(
+    (informant) =>
+      informant.status === "active" &&
+      informant.permissions.includes("evidence.submit"),
   );
 
   if (
     event.type === "InformantRegistered" &&
-    activeInformant?.permissions.includes("report")
+    registeringInformant
   ) {
     actions.push({
       kind: "UPDATE_REGISTRY",
       registryId: "munisible-informants.json",
-      patch: { status: "active" },
+      patch: {
+        id: registeringInformant.id,
+        status: "active",
+      },
     });
   }
 
   if (
     event.type === "EvidenceSubmitted" &&
-    activeInformant?.permissions.includes("evidence.submit")
+    evidenceInformant
   ) {
     actions.push({
       kind: "TRIGGER_WORKFLOW",
