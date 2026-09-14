@@ -8,3 +8,5 @@ It also includes `deterministic-contract.ts`, a root deterministic governance co
 It also includes `cycle-eight-autonomy-router.ts` and `autonomy-router-binding.ts`, which propose router-level actions and then bind those actions through the deterministic contract so only constitutionally allowed autonomy executes.
 
 It also includes `orchestration-autonomy-engine.ts`, a pure LUCR lifecycle orchestrator that routes deterministic buy, sell, mint, and burn requests through the autonomy router binding before producing governance, token-core, market-router, and off-chain execution steps.
+
+It also includes `munisible-binding.ts` plus the `munisible-registry.json`, `munisible-taskforce.json`, and `munisible-informants.json` artifacts, which model deterministic municipal operations, task force routing, informant protections, evidence integrity, and municipal contract binding.

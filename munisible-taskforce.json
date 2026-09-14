@@ -1,0 +1,31 @@
+{
+  "taskForceId": "municipal-task-force-alpha",
+  "identity": {
+    "name": "Municipal Task Force Alpha",
+    "jurisdiction": "city-core",
+    "classification": "deterministic-response"
+  },
+  "permissions": {
+    "activate": true,
+    "routeCitizens": true,
+    "routeEvidence": true,
+    "performAudits": true,
+    "triggerWellbeingProtection": true
+  },
+  "routingRules": {
+    "violations": "municipal-compliance-desk",
+    "lineageFailures": "municipal-router",
+    "evidenceEscalations": "task-force-command",
+    "wellbeingEmergencies": "wellbeing-office"
+  },
+  "auditRules": {
+    "requireAuditTrail": true,
+    "requireSupervisorReview": true,
+    "requireDeterministicEvidenceHash": true
+  },
+  "wellbeingRules": {
+    "maxTraumaExposure": 0,
+    "requireWellbeingEscort": true,
+    "requireRecoveryReview": true
+  }
+}

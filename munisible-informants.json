@@ -1,0 +1,29 @@
+{
+  "programId": "municipal-informant-network",
+  "identity": {
+    "classification": "municipal-intelligence",
+    "custodian": "informant-program",
+    "wellbeingCustodian": "wellbeing-office"
+  },
+  "permissions": {
+    "submitEvidence": true,
+    "receiveRouting": true,
+    "viewOwnStatus": true,
+    "directTaskForceAuthority": false
+  },
+  "evidenceIntegrityRules": {
+    "requireHashChain": true,
+    "requireSealBeforeEscalation": true,
+    "rejectUnsignedEvidence": true
+  },
+  "routingRules": {
+    "citizenRisk": "task-force-command",
+    "complianceRisk": "municipal-compliance-desk",
+    "wellbeingRisk": "wellbeing-office"
+  },
+  "wellbeingRules": {
+    "requireTraumaPreventionCheck": true,
+    "requireProtectedIdentity": true,
+    "requireEmergencyExitProtocol": true
+  }
+}
