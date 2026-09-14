@@ -94,7 +94,7 @@ export function filterAllowedRouterActions(
 function normalizeSystemEvent(event: SystemEvent): SystemEvent {
   return {
     ...event,
-    type: event.type.trim().toLowerCase().replace(/\s+/g, "-"),
+    type: event.type,
   };
 }
 

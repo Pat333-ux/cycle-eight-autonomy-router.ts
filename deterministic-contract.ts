@@ -187,7 +187,7 @@ export function evaluateInvariants(
 
   if (input.lineageState.activeCycleId && !hasActiveCycleSealManifest) {
     invariants.push({
-      code: "SEAL_REQUIRES_CYCLE",
+      code: "ACTIVE_CYCLE_MISSING_SEAL",
       severity: "high",
       message: "Seal artifacts must remain bound to an active cycle lineage.",
     });
@@ -481,7 +481,11 @@ function selectArtifactNodeId(
     return linkedNodeIds[0];
   }
 
-  return defaultNodeId;
+  if (linkedNodeIds.length === 0) {
+    return defaultNodeId;
+  }
+
+  return undefined;
 }
 
 function joinDistinctReasons(left: string, right: string): string {
