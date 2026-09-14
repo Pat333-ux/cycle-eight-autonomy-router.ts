@@ -351,11 +351,13 @@ export function findMissingArtifacts(
   );
   const explicitMissing = artifacts
     .filter((artifact) => artifact.required && !isUsableArtifact(artifact))
-    .map<MissingArtifact>((artifact) => ({
-      nodeId: artifact.linkedNodeId ?? `artifact:${artifact.id}`,
-      artifactType: artifact.type,
-      status: artifact.status === "stale" ? "stale" : "missing",
-    }));
+    .flatMap<MissingArtifact>((artifact) =>
+      resolveArtifactNodeIds(lineage, artifact).map((nodeId) => ({
+        nodeId,
+        artifactType: artifact.type,
+        status: artifact.status === "stale" ? "stale" : "missing",
+      })),
+    );
 
   return dedupeMissingArtifacts([...inferredMissing, ...explicitMissing]);
 }
@@ -673,12 +675,11 @@ export function buildDirectives(
     },
   }));
 
-  const shouldEmitTokenomicsDirective = actions.some(
+  const tokenomicsAction = actions.find(
     (action) => action.action === "rebalance-lucr",
   );
-  const tokenomicsPriority =
-    actions.find((action) => action.action === "rebalance-lucr")?.priority ??
-    "medium";
+  const shouldEmitTokenomicsDirective = Boolean(tokenomicsAction);
+  const tokenomicsPriority = tokenomicsAction?.priority ?? "medium";
 
   return sortDirectives([
     ...actionDirectives,
@@ -762,6 +763,25 @@ function hasTokenomicsAdjustment(
 
 function isUsableArtifact(artifact: GovernanceArtifact): boolean {
   return artifact.status === "present";
+}
+
+function resolveArtifactNodeIds(
+  lineage: LineageNode[],
+  artifact: GovernanceArtifact,
+): string[] {
+  if (artifact.linkedNodeId) {
+    return [artifact.linkedNodeId];
+  }
+
+  const matchingNodeIds = lineage
+    .filter((node) => requiredArtifactsByStatus[node.status].includes(artifact.type))
+    .map((node) => node.id);
+
+  if (matchingNodeIds.length > 0) {
+    return matchingNodeIds;
+  }
+
+  return lineage[0] ? [lineage[0].id] : [];
 }
 
 function missingArtifactStatusRank(

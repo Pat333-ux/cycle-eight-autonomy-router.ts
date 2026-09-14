@@ -58,6 +58,7 @@ export type LineageState = {
         | {
             id: string;
             status?: "present" | "missing" | "stale";
+            nodeId?: string;
           }
       >
     | undefined
@@ -166,10 +167,18 @@ export function evaluateInvariants(
     });
   }
 
-  if (
-    input.lineageState.artifacts["seal-manifest"] &&
-    !input.lineageState.activeCycleId
-  ) {
+  const nodeById = new Map(input.lineage.map((node) => [node.id, node]));
+  const hasCycleBoundSealManifest = input.governanceArtifacts.some(
+    (artifact) =>
+      artifact.type === "seal-manifest" &&
+      artifact.status === "present" &&
+      Boolean(
+        artifact.linkedNodeId &&
+          nodeById.get(artifact.linkedNodeId)?.cycleId,
+      ),
+  );
+
+  if (hasCycleBoundSealManifest && !input.lineageState.activeCycleId) {
     invariants.push({
       code: "SEAL_REQUIRES_CYCLE",
       severity: "high",
@@ -424,13 +433,20 @@ function toGovernanceArtifacts(
         ? "present"
         : artifactValue.status ?? "present",
     required: true,
-    linkedNodeId: nodeId,
+    linkedNodeId:
+      typeof artifactValue === "string"
+        ? nodeId
+        : artifactValue.nodeId ?? nodeId,
   }));
 }
 
 function hasArtifactId(
   value: Exclude<LineageState["artifacts"][string], string | undefined>,
-): value is { id: string; status?: "present" | "missing" | "stale"; nodeId?: string } {
+): value is {
+  id: string;
+  status?: "present" | "missing" | "stale";
+  nodeId?: string;
+} {
   return "id" in value;
 }
 
