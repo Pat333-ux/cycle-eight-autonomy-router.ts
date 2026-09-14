@@ -12,16 +12,30 @@ import {
 
 export type LucrLifecycleOperation = "buy" | "sell" | "mint" | "burn";
 
-export type LucrLifecycleRequest = {
+type LucrLifecycleRequestBase = {
   requestId?: string;
-  operation: LucrLifecycleOperation;
   citizenId: string;
   walletAddress: string;
   amount: number;
-  paymentAmount?: number;
-  paymentAsset?: "ETH" | "USDC";
   reason?: string;
 };
+
+export type LucrLifecycleRequest =
+  | (LucrLifecycleRequestBase & {
+      operation: "buy";
+      paymentAmount?: number;
+      paymentAsset?: "ETH" | "USDC";
+    })
+  | (LucrLifecycleRequestBase & {
+      operation: "sell";
+      paymentAmount?: number;
+      paymentAsset: "ETH" | "USDC";
+    })
+  | (LucrLifecycleRequestBase & {
+      operation: "mint" | "burn";
+      paymentAmount?: number;
+      paymentAsset?: undefined;
+    });
 
 export type LucrQuote = {
   paymentAsset: "ETH" | "USDC" | "LUCR";
@@ -100,10 +114,6 @@ export function quoteLucrLifecycle(
   request: LucrLifecycleRequest,
   registries: RegistryState,
 ): LucrQuote {
-  if (request.operation === "sell" && !request.paymentAsset) {
-    throw new Error("Sell requests must declare a payout asset for deterministic quoting.");
-  }
-
   const rewardMultiplier = 1 + registries.lucr.rewardRate;
   const burnMultiplier = Math.max(0, 1 - registries.lucr.burnRate);
   const paymentAsset = request.paymentAsset ?? "USDC";

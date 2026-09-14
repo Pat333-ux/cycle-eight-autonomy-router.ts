@@ -433,7 +433,10 @@ function emitActivationEvents(
     );
   }
 
-  if (thresholds.municipalActivationScore >= thresholds.triggerThreshold) {
+  if (
+    primaryMunicipality &&
+    thresholds.municipalActivationScore >= thresholds.triggerThreshold
+  ) {
     upsertActivationEvent(
       activationEvents,
       buildActivationEvent("municipal-operation", {
@@ -524,6 +527,7 @@ function emitActivationEvents(
   }
 
   if (
+    primaryMunicipality &&
     citizens.some((citizen) => citizen.taskForceEligible) &&
     thresholds.municipalActivationScore >= thresholds.triggerThreshold
   ) {
@@ -545,6 +549,7 @@ function emitActivationEvents(
   }
 
   if (
+    primaryMunicipality &&
     citizens.some((citizen) => citizen.informantEligible) &&
     thresholds.evidenceIntegrityScore >= thresholds.triggerThreshold
   ) {
