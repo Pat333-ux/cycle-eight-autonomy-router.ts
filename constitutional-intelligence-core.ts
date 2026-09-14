@@ -102,7 +102,11 @@ export type GovernanceAction =
   | "trigger-stability-cycle"
   | "trigger-wellbeing-epoch"
   | "reconstruct-lineage"
-  | "rebalance-lucr";
+  | "rebalance-lucr"
+  | "authorize-lucr-buy"
+  | "authorize-lucr-sell"
+  | "authorize-lucr-mint"
+  | "authorize-lucr-burn";
 
 export interface PredictedAction {
   action: GovernanceAction;
@@ -198,6 +202,18 @@ export type AutonomousDirective =
         ministry: MinistryName;
         reason: string;
       };
+    }
+  | {
+      kind: "authorize-token-operation";
+      priority: GovernanceSeverity;
+      payload: {
+        action:
+          | "authorize-lucr-buy"
+          | "authorize-lucr-sell"
+          | "authorize-lucr-mint"
+          | "authorize-lucr-burn";
+        reason: string;
+      };
     };
 
 export interface ConstitutionalIntelligenceReport {
@@ -253,6 +269,10 @@ const ministryByAction: Record<GovernanceAction, MinistryName> = {
   "trigger-wellbeing-epoch": "Coordination",
   "reconstruct-lineage": "Archives",
   "rebalance-lucr": "Treasury",
+  "authorize-lucr-buy": "Treasury",
+  "authorize-lucr-sell": "Treasury",
+  "authorize-lucr-mint": "Treasury",
+  "authorize-lucr-burn": "Treasury",
 };
 
 const directiveKindByAction: Record<
@@ -264,6 +284,10 @@ const directiveKindByAction: Record<
   "trigger-wellbeing-epoch": "trigger-epoch",
   "reconstruct-lineage": "repair-lineage",
   "rebalance-lucr": "rebalance-tokenomics",
+  "authorize-lucr-buy": "authorize-token-operation",
+  "authorize-lucr-sell": "authorize-token-operation",
+  "authorize-lucr-mint": "authorize-token-operation",
+  "authorize-lucr-burn": "authorize-token-operation",
 };
 
 const citizenGrowthRewardFactor = 0.001;
@@ -818,7 +842,14 @@ function mapPredictedActionToDirective(
   action: PredictedAction,
 ): Extract<
   AutonomousDirective,
-  { kind: "trigger-epoch" | "trigger-cycle" | "run-audit" | "repair-lineage" }
+  {
+    kind:
+      | "trigger-epoch"
+      | "trigger-cycle"
+      | "run-audit"
+      | "repair-lineage"
+      | "authorize-token-operation";
+  }
 > {
   switch (action.action) {
     case "trigger-wellbeing-epoch":
@@ -854,6 +885,18 @@ function mapPredictedActionToDirective(
         priority: action.priority,
         payload: {
           action: "reconstruct-lineage",
+          reason: action.reason,
+        },
+      };
+    case "authorize-lucr-buy":
+    case "authorize-lucr-sell":
+    case "authorize-lucr-mint":
+    case "authorize-lucr-burn":
+      return {
+        kind: "authorize-token-operation",
+        priority: action.priority,
+        payload: {
+          action: action.action,
           reason: action.reason,
         },
       };

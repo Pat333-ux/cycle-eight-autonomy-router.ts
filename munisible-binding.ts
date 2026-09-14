@@ -94,6 +94,12 @@ export type MunicipalAction =
       reason: string;
     }
   | {
+      kind: "protect-citizen";
+      priority: GovernanceSeverity;
+      target: string;
+      reason: string;
+    }
+  | {
       kind: "run-municipal-audit";
       priority: GovernanceSeverity;
       target: "municipal-audit";
@@ -136,7 +142,7 @@ export function bindMunisibleOperations(
   const deterministicOutput = runDeterministicContract({
     lineage,
     registries,
-    governanceArtifacts: municipalGovernanceArtifacts,
+    governanceArtifacts: effectiveGovernanceArtifacts,
     events: [normalizedEvent],
   }, effectiveGovernanceArtifacts);
   const constitutionalReport = runConstitutionalIntelligenceCore({
@@ -242,12 +248,22 @@ export function evaluateMunicipalRulesEngine(
     registries.traumaIncidents > 0 ||
     constitutionalReport.wellbeingScore < 75
   ) {
-    actions.push({
-      kind: "protect-informant",
-      target: event.citizenId ?? munisibleArtifacts.informants.programId,
-      priority: "critical",
-      reason: "Trauma-prevention safeguards require municipal wellbeing protection.",
-    });
+    const isInformantEvent = isInformantProtectionEvent(event);
+    actions.push(
+      isInformantEvent
+        ? {
+            kind: "protect-informant",
+            target: event.citizenId ?? munisibleArtifacts.informants.programId,
+            priority: "critical",
+            reason: "Trauma-prevention safeguards require municipal informant protection.",
+          }
+        : {
+            kind: "protect-citizen",
+            target: event.citizenId ?? event.municipalityId,
+            priority: "critical",
+            reason: "Trauma-prevention safeguards require municipal citizen protection.",
+          },
+    );
     actions.push({
       kind: "route-ministry",
       target: "municipal-wellbeing",
@@ -436,6 +452,12 @@ function normalizedMunicipalIntelligenceNeeded(
     munisibleArtifacts.informants.permissions.receiveRouting === true &&
     constitutionalReport.detectedViolations.length > 0
   );
+}
+
+function isInformantProtectionEvent(
+  event: MunicipalBindingEvent,
+): boolean {
+  return event.type.toLowerCase().includes("informant");
 }
 
 function dedupeMunicipalActions(

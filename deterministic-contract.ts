@@ -124,7 +124,11 @@ export function runDeterministicContract(
     report.missingArtifacts,
     report.lineageRepairs,
   );
-  const actions = evaluateConstitutionalRules(report.predictedActions, invariants);
+  const actions = evaluateConstitutionalRules(
+    report.predictedActions,
+    invariants,
+    normalizedInput.governanceEvents,
+  );
 
   return {
     actions,
@@ -276,6 +280,7 @@ export function generateLineageRepairs(
 export function evaluateConstitutionalRules(
   predictedActions: PredictedAction[],
   invariants: InvariantViolation[],
+  events: GovernanceEvent[],
 ): PredictedAction[] {
   const actions = [...predictedActions];
   const invariantAuditReason =
@@ -302,7 +307,10 @@ export function evaluateConstitutionalRules(
     }
   }
 
-  return dedupePredictedActions(actions);
+  return dedupePredictedActions([
+    ...actions,
+    ...deriveLifecycleAuthorizations(events, invariants),
+  ]);
 }
 
 function normalizeContractInput(
@@ -548,4 +556,44 @@ function moreSeverePriority(
   right: GovernanceSeverity,
 ): GovernanceSeverity {
   return severityRank(left) < severityRank(right) ? left : right;
+}
+
+function deriveLifecycleAuthorizations(
+  events: GovernanceEvent[],
+  invariants: InvariantViolation[],
+): PredictedAction[] {
+  if (invariants.some((invariant) => invariant.severity === "critical")) {
+    return [];
+  }
+
+  return events.flatMap<PredictedAction>((event) => {
+    switch (event.type) {
+      case "lucr-buy":
+        return [{
+          action: "authorize-lucr-buy",
+          reason: "Deterministic contract authorized the LUCR buy lifecycle path.",
+          priority: "high",
+        }];
+      case "lucr-sell":
+        return [{
+          action: "authorize-lucr-sell",
+          reason: "Deterministic contract authorized the LUCR sell lifecycle path.",
+          priority: "high",
+        }];
+      case "lucr-mint":
+        return [{
+          action: "authorize-lucr-mint",
+          reason: "Deterministic contract authorized the LUCR mint lifecycle path.",
+          priority: "high",
+        }];
+      case "lucr-burn":
+        return [{
+          action: "authorize-lucr-burn",
+          reason: "Deterministic contract authorized the LUCR burn lifecycle path.",
+          priority: "high",
+        }];
+      default:
+        return [];
+    }
+  });
 }

@@ -141,23 +141,30 @@ function filterAuthorizedLucrActions(
   const auditActions = binding.deterministicOutput.actions.filter(
     (action) => action.action === "run-constitutional-audit",
   );
+  const lifecycleAuthorization = binding.deterministicOutput.actions.filter(
+    (action) => action.action === authorizationActionByOperation[request.operation],
+  );
   const operationActions = (() => {
     switch (request.operation) {
       case "buy":
       case "sell":
-        return allowedByBinding.filter((action) => action.action === "rebalance-lucr");
+        return lifecycleAuthorization;
       case "mint":
-        return allowedByBinding.filter(
-          (action) =>
-            action.action === "rebalance-lucr" ||
-            action.action === "trigger-wellbeing-epoch",
-        );
+        return mergeActions([
+          ...lifecycleAuthorization,
+          ...allowedByBinding.filter(
+            (action) =>
+              action.action === "trigger-wellbeing-epoch" ||
+              action.action === "rebalance-lucr",
+          ),
+        ]);
       case "burn":
-        return allowedByBinding.filter(
-          (action) =>
-            action.action === "rebalance-lucr" ||
-            action.action === "run-constitutional-audit",
-        );
+        return mergeActions([
+          ...lifecycleAuthorization,
+          ...allowedByBinding.filter(
+            (action) => action.action === "rebalance-lucr",
+          ),
+        ]);
     }
   })();
 
@@ -243,19 +250,19 @@ function buildExecutionSteps(
           reason: `Quote ${quote.paymentAmount} ${quote.paymentAsset} payout for ${request.amount} LUCR.`,
         },
         {
-          stage: "market-router",
-          method: "transfer-stable",
-          reason: "Send the deterministic payout asset to the citizen.",
-        },
-        {
           stage: "governance",
           method: "request-burn",
-          reason: "Governance authorizes router-originated LUCR burn after payout.",
+          reason: "Governance authorizes router-originated LUCR burn before payout is released.",
         },
         {
           stage: "token-core",
           method: "burn",
           reason: "Burn LUCR received by the router after deterministic authorization.",
+        },
+        {
+          stage: "market-router",
+          method: "transfer-stable",
+          reason: "Send the deterministic payout asset to the citizen.",
         },
         ...commonSteps,
       ];
@@ -307,6 +314,13 @@ function mapLucrRequestToEvent(request: LucrLifecycleRequest): SystemEvent {
 function roundToFour(value: number): number {
   return Math.round(value * 10000) / 10000;
 }
+
+const authorizationActionByOperation = {
+  buy: "authorize-lucr-buy",
+  sell: "authorize-lucr-sell",
+  mint: "authorize-lucr-mint",
+  burn: "authorize-lucr-burn",
+} as const;
 
 function mergeActions(actions: OrchestrationAction[]): OrchestrationAction[] {
   const merged = new Map<OrchestrationAction["action"], OrchestrationAction>();
