@@ -287,7 +287,7 @@ export function findMissingArtifacts(
 ): MissingArtifact[] {
   const available = new Set(
     artifacts
-      .filter((artifact) => artifact.status === "present")
+      .filter(isUsableArtifact)
       .map((artifact) => `${artifact.linkedNodeId ?? ""}:${artifact.type}`),
   );
   const inferredMissing = lineage.flatMap((node) =>
@@ -296,7 +296,7 @@ export function findMissingArtifacts(
       .map((artifactType) => ({ nodeId: node.id, artifactType })),
   );
   const explicitMissing = artifacts
-    .filter((artifact) => artifact.required && artifact.status !== "present")
+    .filter((artifact) => artifact.required && !isUsableArtifact(artifact))
     .map((artifact) => ({
       nodeId: artifact.linkedNodeId ?? `artifact:${artifact.id}`,
       artifactType: artifact.type,
@@ -623,6 +623,9 @@ export function buildDirectives(
   const shouldEmitTokenomicsDirective = actions.some(
     (action) => action.action === "rebalance-lucr",
   );
+  const tokenomicsPriority =
+    actions.find((action) => action.action === "rebalance-lucr")?.priority ??
+    "medium";
 
   return sortDirectives([
     ...actionDirectives,
@@ -633,7 +636,7 @@ export function buildDirectives(
       ? [
           {
             kind: "rebalance-tokenomics" as const,
-            priority: "medium" as const,
+            priority: tokenomicsPriority,
             payload: {
               action: "rebalance-lucr",
               reserveRatio: tokenomicsDirective.reserveRatio,
@@ -698,10 +701,14 @@ function hasTokenomicsAdjustment(
   const directive = rebalanceTokenomics(registries, thresholds);
 
   return (
-    registries.lucr.reserveRatio !== directive.reserveRatio ||
-    registries.lucr.rewardRate !== directive.rewardRate ||
-    registries.lucr.burnRate !== directive.burnRate
+    roundToFour(registries.lucr.reserveRatio) !== directive.reserveRatio ||
+    roundToFour(registries.lucr.rewardRate) !== directive.rewardRate ||
+    roundToFour(registries.lucr.burnRate) !== directive.burnRate
   );
+}
+
+function isUsableArtifact(artifact: GovernanceArtifact): boolean {
+  return artifact.status === "present";
 }
 
 function dedupeMissingArtifacts(
