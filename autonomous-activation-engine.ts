@@ -86,6 +86,8 @@ export type ActivationThresholdSnapshot = {
   auditThreshold: number;
   constitutionalScore: number;
   sovereigntyScore: number;
+  wellbeingActivationScore: number;
+  stabilityActivationScore: number;
   municipalActivationScore: number;
   ministryActivationScore: number;
   citizenGovernanceScore: number;
@@ -196,6 +198,20 @@ export function computeActivationThresholds(
       constitutionalReport.cycleStabilityScore,
     ]),
   );
+  const wellbeingActivationScore = clamp(
+    Math.max(
+      0,
+      (75 - constitutionalReport.wellbeingScore) * 4 +
+        registries.traumaIncidents * 20,
+    ),
+  );
+  const stabilityActivationScore = clamp(
+    Math.max(
+      0,
+      (72 - constitutionalReport.cycleStabilityScore) * 6 +
+        (100 - constitutionalReport.authorityBalanceScore) * 0.35,
+    ),
+  );
   const municipalActivationScore = clamp(
     average([
       ...municipalities.map((municipality) =>
@@ -273,6 +289,8 @@ export function computeActivationThresholds(
     auditThreshold: 80,
     constitutionalScore,
     sovereigntyScore,
+    wellbeingActivationScore,
+    stabilityActivationScore,
     municipalActivationScore,
     ministryActivationScore,
     citizenGovernanceScore,
@@ -284,6 +302,8 @@ export function computeActivationThresholds(
       average([
         constitutionalScore,
         sovereigntyScore,
+        wellbeingActivationScore,
+        stabilityActivationScore,
         municipalActivationScore,
         ministryActivationScore,
         citizenGovernanceScore,

@@ -13,6 +13,8 @@ import type {
 export type ActivationHandler =
   | "routeMinistries"
   | "bindMunisibleOperations"
+  | "evaluateTaskForce"
+  | "evaluateInformant"
   | "orchestrateLucrLifecycle"
   | "runDeterministicContract"
   | "runConstitutionalIntelligenceCore";
@@ -126,9 +128,9 @@ function mapTargetToDispatch(
     case "dao-governance":
       return [buildDispatch(target, event, sequence, "runDeterministicContract", methodByTarget(target, event))];
     case "task-force":
-      return [buildDispatch(target, event, sequence, "bindMunisibleOperations", methodByTarget(target, event))];
+      return [buildDispatch(target, event, sequence, "evaluateTaskForce", methodByTarget(target, event))];
     case "informant-program":
-      return [buildDispatch(target, event, sequence, "bindMunisibleOperations", methodByTarget(target, event))];
+      return [buildDispatch(target, event, sequence, "evaluateInformant", methodByTarget(target, event))];
   }
 }
 

@@ -133,11 +133,9 @@ export function quoteLucrLifecycle(
       const payoutInUsdc = request.amount * burnMultiplier;
       return {
         paymentAsset,
-        paymentAmount:
-          request.paymentAmount ??
-          roundToFour(
-            payoutInUsdc / assetConversionRateByPaymentAsset[paymentAsset],
-          ),
+        paymentAmount: roundToFour(
+          payoutInUsdc / assetConversionRateByPaymentAsset[paymentAsset],
+        ),
         lucrAmount: request.amount,
       };
     case "mint":

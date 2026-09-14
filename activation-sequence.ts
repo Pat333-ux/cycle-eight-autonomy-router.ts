@@ -111,8 +111,9 @@ function buildActivationConditions(
     {
       code: "ACTIVATION_TRIGGER_THRESHOLD",
       satisfied:
-        getActivationScore(event) >=
-          event.thresholdSnapshot.triggerThreshold || event.severity === "critical",
+        getActivationScore(event) >= event.thresholdSnapshot.triggerThreshold ||
+        event.severity === "critical" ||
+        isDeterministicallyTriggered(event),
       reason: "Activation must cross the deterministic self-trigger threshold or be critical.",
       severity: "high",
     },
@@ -350,9 +351,9 @@ function deterministicHash(value: string): string {
 function getActivationScore(event: ActivationEvent): number {
   switch (event.activationClass) {
     case "wellbeing-epoch":
-      return event.thresholdSnapshot.citizenGovernanceScore;
+      return event.thresholdSnapshot.wellbeingActivationScore;
     case "governance-cycle":
-      return event.thresholdSnapshot.daoActivationScore;
+      return event.thresholdSnapshot.stabilityActivationScore;
     case "constitutional-audit":
     case "lineage-repair":
     case "evidence-integrity":
@@ -372,4 +373,10 @@ function getActivationScore(event: ActivationEvent): number {
     case "dao-governance":
       return event.thresholdSnapshot.daoActivationScore;
   }
+}
+
+function isDeterministicallyTriggered(event: ActivationEvent): boolean {
+  return event.sourceActions.some(
+    (action) => !action.startsWith("synthetic-"),
+  );
 }
