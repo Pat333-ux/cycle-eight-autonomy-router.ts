@@ -1,5 +1,5 @@
-import type { MinistryName } from "./constitutional-intelligence-core";
-import type { GovernanceArtifacts, GovernanceSeverity, LineageState } from "./deterministic-contract";
+import type { GovernanceSeverity, MinistryName } from "./constitutional-intelligence-core";
+import type { GovernanceArtifacts, LineageState } from "./deterministic-contract";
 import {
   buildActivationSequence,
   type ActivationSequence,
@@ -85,7 +85,10 @@ function mapTargetToDispatch(
 ): ActivationDispatch[] {
   switch (target) {
     case "ministries":
-      return (event.ministries.length > 0 ? event.ministries : ["Coordination"]).map((ministry) => ({
+      return (event.ministries.length > 0
+        ? event.ministries
+        : (["Coordination"] as MinistryName[])
+      ).map((ministry) => ({
         activationEventId: event.id,
         activationClass: event.activationClass,
         target,

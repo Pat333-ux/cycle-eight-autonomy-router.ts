@@ -1,4 +1,5 @@
-import type { GovernanceSeverity, GovernanceArtifacts, LineageState } from "./deterministic-contract";
+import type { GovernanceSeverity } from "./constitutional-intelligence-core";
+import type { GovernanceArtifacts, LineageState } from "./deterministic-contract";
 import type { ActivationEvent } from "./autonomous-activation-engine";
 
 export type ActivationCondition = {
